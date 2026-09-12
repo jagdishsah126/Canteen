@@ -16,6 +16,7 @@ import { offsetISODate, getTodayISODate, isTodayISO } from '../utils/nepaliDate'
 import { DateHeader } from '../components/DateHeader';
 import { MealToggle } from '../components/MealToggle';
 import { BreakfastSelector } from '../components/BreakfastSelector';
+import { MultiChoiceMealSelector } from '../components/MultiChoiceMealSelector';
 import { QuantityControl } from '../components/QuantityControl';
 import { DailyTotalBar } from '../components/DailyTotalBar';
 import { DailyRecord } from '../types/canteen';
@@ -48,6 +49,7 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
     incrementCustomItem,
     decrementCustomItem,
     setCustomItemQuantity,
+    setCustomMultiChoice,
   } = useCanteenStore();
 
   const isCurrentDayToday = isTodayISO(currentDate);
@@ -220,18 +222,24 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
       const currentVal = draftRecord.customItems?.[optId] || {
         id: optId,
         name: opt?.name || 'Custom Item',
-        type: 'toggle' as const,
+        type: opt?.type || 'toggle',
         price: opt?.defaultPrice || 0,
         eaten: false,
       };
+      const nextEaten = !currentVal.eaten;
+      const isIncomplete = opt?.type === 'multi_choice'
+        ? (nextEaten ? (!currentVal.item || currentVal.price <= 0) : false)
+        : false;
+
       setDraftRecord((prev) => ({
         ...prev,
         customItems: {
           ...(prev.customItems || {}),
           [optId]: {
             ...currentVal,
-            eaten: !currentVal.eaten,
-            price: currentVal.price || opt?.defaultPrice || 0,
+            eaten: nextEaten,
+            price: currentVal.price || (opt?.type === 'multi_choice' ? 0 : opt?.defaultPrice || 0),
+            isIncomplete,
           },
         },
       }));
@@ -309,6 +317,35 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
     }
   };
 
+  const handleSetCustomMultiChoice = (optId: string, item: string, price: number) => {
+    if (isSaved) {
+      setCustomMultiChoice(currentDate, optId, item, price);
+    } else {
+      const opt = customOptions.find((o) => o.id === optId);
+      const currentVal = draftRecord.customItems?.[optId] || {
+        id: optId,
+        name: opt?.name || 'Custom Option',
+        type: 'multi_choice' as const,
+        eaten: true,
+        item: '',
+        price: 0,
+      };
+      setDraftRecord((prev) => ({
+        ...prev,
+        customItems: {
+          ...(prev.customItems || {}),
+          [optId]: {
+            ...currentVal,
+            eaten: true,
+            item,
+            price,
+            isIncomplete: !item || price <= 0,
+          },
+        },
+      }));
+    }
+  };
+
   return (
     <div className="min-h-screen pb-36">
       {/* Date Header with Save / Tick status */}
@@ -355,7 +392,7 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
           onToggle={handleToggleMorning}
         />
 
-        {/* Core Option 2: Breakfast */}
+        {/* Core Option 2: Breakfast (By Default Skipped / Not Eaten) */}
         <BreakfastSelector
           breakfast={activeRecord.breakfast}
           presets={breakfastPresets}
@@ -407,10 +444,10 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
 
             {customOptions.map((opt) => {
               const currentVal = activeRecord.customItems?.[opt.id];
-              const price = currentVal?.price || opt.defaultPrice;
 
               if (opt.type === 'toggle') {
-                const isEaten = currentVal ? Boolean(currentVal.eaten) : opt.defaultEaten;
+                const isEaten = currentVal ? Boolean(currentVal.eaten) : Boolean(opt.defaultEaten);
+                const price = currentVal?.price || opt.defaultPrice;
                 return (
                   <MealToggle
                     key={opt.id}
@@ -424,6 +461,26 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
                 );
               }
 
+              if (opt.type === 'multi_choice') {
+                const isEaten = currentVal ? Boolean(currentVal.eaten) : Boolean(opt.defaultEaten);
+                const price = currentVal?.price || 0;
+                return (
+                  <MultiChoiceMealSelector
+                    key={opt.id}
+                    label={opt.name}
+                    icon={<Utensils className="w-5 h-5" />}
+                    eaten={isEaten}
+                    selectedItem={currentVal?.item || ''}
+                    price={price}
+                    presets={opt.presets || []}
+                    onToggleEaten={() => handleToggleCustom(opt.id)}
+                    onSelectPreset={(preset) => handleSetCustomMultiChoice(opt.id, preset.label, preset.price)}
+                    onSetCustom={(item, p) => handleSetCustomMultiChoice(opt.id, item, p)}
+                  />
+                );
+              }
+
+              const price = currentVal?.price || opt.defaultPrice;
               const qty = currentVal ? (currentVal.quantity || 0) : opt.defaultQuantity;
               return (
                 <QuantityControl

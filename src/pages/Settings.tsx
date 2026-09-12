@@ -14,6 +14,7 @@ import {
   Moon,
   Sun,
   Layers,
+  Tag,
 } from 'lucide-react';
 import { useCanteenStore } from '../store/canteenStore';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -39,6 +40,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
     deleteBreakfastPreset,
     addCustomOption,
     deleteCustomOption,
+    addPresetToCustomOption,
+    deletePresetFromCustomOption,
     importBackup,
     clearAllData,
   } = useCanteenStore();
@@ -59,10 +62,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
 
   // Custom Options addition state
   const [newOptName, setNewOptName] = useState('');
-  const [newOptType, setNewOptType] = useState<CustomOptionType>('quantity');
-  const [newOptPrice, setNewOptPrice] = useState('');
+  const [newOptType, setNewOptType] = useState<CustomOptionType>('multi_choice');
+  const [newOptPrice, setNewOptPrice] = useState('0');
   const [newOptDefaultEaten, setNewOptDefaultEaten] = useState(false);
   const [newOptDefaultQty, setNewOptDefaultQty] = useState('0');
+
+  // Sub-preset state for multi_choice options
+  const [activePresetOptId, setActivePresetOptId] = useState<string | null>(null);
+  const [subPresetName, setSubPresetName] = useState('');
+  const [subPresetPrice, setSubPresetPrice] = useState('');
 
   // Modals state
   const [showClearModal, setShowClearModal] = useState(false);
@@ -108,7 +116,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
 
   const handleAddCustomOption = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newOptName.trim() || !newOptPrice) return;
+    if (!newOptName.trim()) return;
     const priceNum = Math.max(0, parseFloat(newOptPrice) || 0);
     const qtyNum = Math.max(0, parseInt(newOptDefaultQty, 10) || 0);
 
@@ -116,14 +124,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
       newOptName.trim(),
       newOptType,
       priceNum,
-      newOptDefaultEaten,
-      qtyNum
+      newOptType === 'multi_choice' ? false : newOptDefaultEaten,
+      qtyNum,
+      []
     );
 
     setNewOptName('');
-    setNewOptPrice('');
+    setNewOptPrice('0');
     setNewOptDefaultEaten(false);
     setNewOptDefaultQty('0');
+  };
+
+  const handleAddSubPreset = (optId: string) => {
+    if (subPresetName.trim() && parseFloat(subPresetPrice) > 0) {
+      addPresetToCustomOption(optId, subPresetName.trim(), parseFloat(subPresetPrice));
+      setSubPresetName('');
+      setSubPresetPrice('');
+    }
   };
 
   // Export JSON Backup
@@ -248,7 +265,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
               Core Meal & Addon Prices
             </h2>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              These prices apply when creating new days. Existing historical records remain frozen at their saved rates.
+              These prices apply when creating new days. Existing historical records remain frozen at their saved rates. Breakfast is <strong>by default not eaten</strong>.
             </p>
           </div>
 
@@ -329,7 +346,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
           </form>
         </section>
 
-        {/* Section 2: Custom Food Options (Add New Options with Defaults) */}
+        {/* Section 2: Custom Food Options (Add Multi-Choice Options like Breakfast, or Quantities/Toggles) */}
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
           <div className="flex items-center space-x-2">
             <Layers className="w-4 h-4 text-amber-500" />
@@ -338,46 +355,118 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
                 Custom Hostel Options
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Add custom meals or extras (e.g. Milk, Snacks, Roti) with default prices and initial values.
+                Add meal options like Breakfast (with presets/choices), quantity steppers, or toggles. (By default set as not eaten).
               </p>
             </div>
           </div>
 
           {/* List of Custom Options */}
           {customOptions.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {customOptions.map((opt) => (
                 <div
                   key={opt.id}
-                  className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs"
+                  className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs"
                 >
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {opt.name}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-medium uppercase">
-                        {opt.type}
-                      </span>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                          {opt.name}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-semibold uppercase">
+                          {opt.type === 'multi_choice' ? 'Multi-Choice (Like Breakfast)' : opt.type}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {opt.type === 'multi_choice'
+                          ? `Presets: ${(opt.presets || []).length} items • Default: Not eaten`
+                          : opt.type === 'toggle'
+                          ? `Rate: Rs. ${opt.defaultPrice} • Default: ${opt.defaultEaten ? 'Eaten' : 'Skipped'}`
+                          : `Rate: Rs. ${opt.defaultPrice} • Default qty: ${opt.defaultQuantity}`}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      Rate: <strong className="text-amber-600 dark:text-amber-400">Rs. {opt.defaultPrice}</strong> • Default:{' '}
-                      {opt.type === 'toggle'
-                        ? opt.defaultEaten
-                          ? 'Eaten (Yes)'
-                          : 'Skipped (No)'
-                        : `${opt.defaultQuantity} units`}
-                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteCustomOption(opt.id)}
+                      className="p-1.5 text-rose-400 hover:text-rose-600 rounded-lg transition"
+                      title="Delete custom option"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => deleteCustomOption(opt.id)}
-                    className="p-1.5 text-rose-400 hover:text-rose-600 rounded-lg transition"
-                    title="Delete custom option"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {/* For Multi-Choice options: Manage Presets */}
+                  {opt.type === 'multi_choice' && (
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                          Option Presets:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActivePresetOptId(activePresetOptId === opt.id ? null : opt.id)}
+                          className="text-amber-600 dark:text-amber-400 hover:underline text-[11px] font-medium flex items-center space-x-1"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>{activePresetOptId === opt.id ? 'Close' : 'Add Preset'}</span>
+                        </button>
+                      </div>
+
+                      {/* Presets Chips */}
+                      {(opt.presets || []).length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {(opt.presets || []).map((p) => (
+                            <span
+                              key={p.id}
+                              className="inline-flex items-center space-x-1 py-1 px-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px]"
+                            >
+                              <span className="font-medium text-slate-800 dark:text-slate-200">{p.label}</span>
+                              <span className="font-bold text-amber-600 dark:text-amber-400">Rs.{p.price}</span>
+                              <button
+                                type="button"
+                                onClick={() => deletePresetFromCustomOption(opt.id, p.id)}
+                                className="text-slate-400 hover:text-rose-500 ml-1"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-400 italic">No presets added yet.</p>
+                      )}
+
+                      {/* Add Sub-preset form */}
+                      {activePresetOptId === opt.id && (
+                        <div className="mt-1 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center space-x-2 animate-fade-in">
+                          <input
+                            type="text"
+                            placeholder="e.g. Samosa"
+                            value={subPresetName}
+                            onChange={(e) => setSubPresetName(e.target.value)}
+                            className="flex-1 px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Rs."
+                            value={subPresetPrice}
+                            onChange={(e) => setSubPresetPrice(e.target.value)}
+                            className="w-16 px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddSubPreset(opt.id)}
+                            className="py-1 px-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded text-xs font-semibold"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -393,43 +482,46 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
             className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5"
           >
             <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
-              + Add New Custom Food Option
+              + Add New Food Option
             </span>
 
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="text"
-                placeholder="Option Name (e.g. Milk)"
+                placeholder="Option Name (e.g. Snacks, Milk, Tea Addon)"
                 value={newOptName}
                 onChange={(e) => setNewOptName(e.target.value)}
                 className="col-span-2 px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                 required
               />
 
-              <div>
-                <label className="text-[10px] text-slate-500 block mb-0.5">Type</label>
+              <div className="col-span-2 sm:col-span-1">
+                <label className="text-[10px] text-slate-500 block mb-0.5">Option Category Type</label>
                 <select
                   value={newOptType}
                   onChange={(e) => setNewOptType(e.target.value as CustomOptionType)}
                   className="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                 >
+                  <option value="multi_choice">Multi-Choice (Like Breakfast with presets)</option>
                   <option value="quantity">Quantity Stepper (0, 1, 2...)</option>
-                  <option value="toggle">Toggle (Eaten / Skipped)</option>
+                  <option value="toggle">Toggle (Single fixed price)</option>
                 </select>
               </div>
 
-              <div>
-                <label className="text-[10px] text-slate-500 block mb-0.5">Default Price (Rs.)</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Price"
-                  value={newOptPrice}
-                  onChange={(e) => setNewOptPrice(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                  required
-                />
-              </div>
+              {newOptType !== 'multi_choice' && (
+                <div>
+                  <label className="text-[10px] text-slate-500 block mb-0.5">Default Price (Rs.)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Price"
+                    value={newOptPrice}
+                    onChange={(e) => setNewOptPrice(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    required
+                  />
+                </div>
+              )}
 
               {newOptType === 'toggle' ? (
                 <div className="col-span-2 flex items-center space-x-2 pt-1">
@@ -444,7 +536,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
                     Default: Eaten (Yes)
                   </label>
                 </div>
-              ) : (
+              ) : newOptType === 'quantity' ? (
                 <div className="col-span-2 flex items-center space-x-2 pt-1">
                   <label className="text-xs text-slate-700 dark:text-slate-300">
                     Default Quantity:
@@ -456,6 +548,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
                     onChange={(e) => setNewOptDefaultQty(e.target.value)}
                     className="w-20 px-2 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
+                </div>
+              ) : (
+                <div className="col-span-2 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 p-2 rounded-xl flex items-center space-x-1.5">
+                  <Tag className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span>Created as <strong>by default not eaten</strong>. You can add presets after creation.</span>
                 </div>
               )}
             </div>
@@ -478,7 +575,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
                 Breakfast Presets
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Quick-tap items available on the daily tracker.
+                Quick-tap items available for Breakfast.
               </p>
             </div>
           </div>
@@ -653,7 +750,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
           <div className="flex items-center justify-center space-x-1.5">
             <Info className="w-3.5 h-3.5" />
             <span className="font-semibold text-slate-600 dark:text-slate-400">
-              WRC Hostel Canteen Tracker v1.1.0
+              WRC Hostel Canteen Tracker v1.2.0
             </span>
           </div>
           <p className="text-[11px]">

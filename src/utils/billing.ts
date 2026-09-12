@@ -1,11 +1,12 @@
-import { DailyRecord } from '../types/canteen';
+import { DailyRecord, CustomOptionType } from '../types/canteen';
 
 export interface DailyCustomBreakdownItem {
   id: string;
   name: string;
-  type: 'toggle' | 'quantity';
+  type: CustomOptionType;
   cost: number;
   quantityOrEaten: number | boolean;
+  chosenItem?: string;
 }
 
 export interface DailyCostBreakdown {
@@ -43,7 +44,7 @@ export function calculateDailyCost(record?: DailyRecord | null): DailyCostBreakd
   const dinnerCost = record.dinner.eaten ? (record.dinner.price || 0) : 0;
   
   // Breakfast: if marked eaten, must have item and price.
-  const isBreakfastIncomplete = Boolean(
+  let isRecordIncomplete = Boolean(
     record.breakfast.eaten && (record.breakfast.isIncomplete || !record.breakfast.item || record.breakfast.price <= 0)
   );
 
@@ -72,7 +73,7 @@ export function calculateDailyCost(record?: DailyRecord | null): DailyCostBreakd
           cost,
           quantityOrEaten: Boolean(item.eaten),
         };
-      } else {
+      } else if (item.type === 'quantity') {
         const qty = Math.max(0, item.quantity || 0);
         const cost = qty * (item.price || 0);
         customItemsCost += cost;
@@ -82,6 +83,23 @@ export function calculateDailyCost(record?: DailyRecord | null): DailyCostBreakd
           type: 'quantity',
           cost,
           quantityOrEaten: qty,
+        };
+      } else if (item.type === 'multi_choice') {
+        const isChoiceIncomplete = Boolean(
+          item.eaten && (item.isIncomplete || !item.item || item.price <= 0)
+        );
+        if (isChoiceIncomplete) {
+          isRecordIncomplete = true;
+        }
+        const cost = item.eaten ? (item.price || 0) : 0;
+        customItemsCost += cost;
+        customBreakdown[id] = {
+          id,
+          name: item.name,
+          type: 'multi_choice',
+          cost,
+          quantityOrEaten: Boolean(item.eaten),
+          chosenItem: item.item || '',
         };
       }
     }
@@ -98,14 +116,14 @@ export function calculateDailyCost(record?: DailyRecord | null): DailyCostBreakd
     customItemsCost,
     customBreakdown,
     totalCost,
-    isIncomplete: isBreakfastIncomplete,
+    isIncomplete: isRecordIncomplete,
   };
 }
 
 export interface MonthlyCustomItemSummary {
   id: string;
   name: string;
-  type: 'toggle' | 'quantity';
+  type: CustomOptionType;
   countOrQuantity: number;
   totalCost: number;
 }
@@ -207,7 +225,7 @@ export function aggregateMonthlySummary(recordsList: DailyRecord[]): MonthlyAggr
         };
       }
 
-      if (item.type === 'toggle' && item.quantityOrEaten) {
+      if ((item.type === 'toggle' || item.type === 'multi_choice') && item.quantityOrEaten) {
         summary.customItemsSummary[id].countOrQuantity += 1;
         summary.customItemsSummary[id].totalCost += item.cost;
       } else if (item.type === 'quantity' && typeof item.quantityOrEaten === 'number' && item.quantityOrEaten > 0) {

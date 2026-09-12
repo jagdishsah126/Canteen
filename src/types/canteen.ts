@@ -15,15 +15,22 @@ export interface ExtraItemRecord {
   unitPrice: number;
 }
 
-export type CustomOptionType = 'toggle' | 'quantity';
+export type CustomOptionType = 'toggle' | 'quantity' | 'multi_choice';
+
+export interface CustomOptionPreset {
+  id: string;
+  label: string;
+  price: number;
+}
 
 export interface CustomFoodOption {
   id: string;
   name: string;
   type: CustomOptionType;
   defaultPrice: number;
-  defaultEaten: boolean;    // for toggle
-  defaultQuantity: number; // for quantity
+  defaultEaten: boolean; // by default false as requested
+  defaultQuantity: number;
+  presets?: CustomOptionPreset[]; // for multi_choice options like breakfast
 }
 
 export interface DailyCustomItemValue {
@@ -32,7 +39,9 @@ export interface DailyCustomItemValue {
   type: CustomOptionType;
   eaten?: boolean;
   quantity?: number;
+  item?: string; // for multi_choice
   price: number; // Frozen price at record time
+  isIncomplete?: boolean; // for multi_choice when eaten is true but price/item missing
 }
 
 export interface DailyRecord {
@@ -64,7 +73,7 @@ export interface CanteenPrices {
 export interface CanteenDefaults {
   morningFoodEaten: boolean; // default true
   dinnerEaten: boolean;      // default true
-  breakfastEaten: boolean;   // default true
+  breakfastEaten: boolean;   // default false (not eaten by default)
 }
 
 export interface MonthSnapshot {

@@ -9,10 +9,12 @@ import {
   BackupPayload,
   CustomFoodOption,
   CustomOptionType,
+  CustomOptionPreset,
+  DailyCustomItemValue,
 } from '../types/canteen';
 import { isTodayISO } from '../utils/nepaliDate';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export const INITIAL_PRICES: CanteenPrices = {
   morningFood: 72,
@@ -24,7 +26,7 @@ export const INITIAL_PRICES: CanteenPrices = {
 export const INITIAL_DEFAULTS: CanteenDefaults = {
   morningFoodEaten: true,
   dinnerEaten: true,
-  breakfastEaten: true,
+  breakfastEaten: false, // For now by default not eaten
 };
 
 export const INITIAL_BREAKFAST_PRESETS: BreakfastPreset[] = [
@@ -53,7 +55,7 @@ export interface CanteenState {
   unsaveDayRecord: (date: string) => void;
   updateRecord: (record: DailyRecord) => void;
 
-  // Direct actions
+  // Core meal actions
   toggleMorningFood: (date: string) => void;
   toggleDinner: (date: string) => void;
   toggleBreakfast: (date: string) => void;
@@ -70,6 +72,7 @@ export interface CanteenState {
   incrementCustomItem: (date: string, optionId: string) => void;
   decrementCustomItem: (date: string, optionId: string) => void;
   setCustomItemQuantity: (date: string, optionId: string, quantity: number) => void;
+  setCustomMultiChoice: (date: string, optionId: string, item: string, price: number) => void;
 
   // Custom Options Management (Settings)
   addCustomOption: (
@@ -77,10 +80,13 @@ export interface CanteenState {
     type: CustomOptionType,
     defaultPrice: number,
     defaultEaten: boolean,
-    defaultQuantity: number
+    defaultQuantity: number,
+    presets?: CustomOptionPreset[]
   ) => void;
   updateCustomOption: (id: string, updates: Partial<CustomFoodOption>) => void;
   deleteCustomOption: (id: string) => void;
+  addPresetToCustomOption: (optionId: string, label: string, price: number) => void;
+  deletePresetFromCustomOption: (optionId: string, presetId: string) => void;
 
   // Settings & Presets Actions
   updateSettingsPrices: (prices: Partial<CanteenPrices>) => void;
@@ -113,17 +119,31 @@ export const useCanteenStore = create<CanteenState>()(
         const isToday = isTodayISO(date);
 
         // Build default custom items values
-        const customItems: Record<string, any> = {};
+        const customItems: Record<string, DailyCustomItemValue> = {};
         for (const opt of state.customOptions) {
-          customItems[opt.id] = {
-            id: opt.id,
-            name: opt.name,
-            type: opt.type,
-            price: opt.defaultPrice,
-            eaten: opt.defaultEaten,
-            quantity: opt.defaultQuantity,
-          };
+          if (opt.type === 'multi_choice') {
+            customItems[opt.id] = {
+              id: opt.id,
+              name: opt.name,
+              type: 'multi_choice',
+              price: 0,
+              eaten: false, // Default not eaten
+              item: '',
+              isIncomplete: false,
+            };
+          } else {
+            customItems[opt.id] = {
+              id: opt.id,
+              name: opt.name,
+              type: opt.type,
+              price: opt.defaultPrice,
+              eaten: opt.defaultEaten,
+              quantity: opt.defaultQuantity,
+            };
+          }
         }
+
+        const isBreakfastEaten = state.settings.defaults.breakfastEaten;
 
         return {
           date,
@@ -136,10 +156,10 @@ export const useCanteenStore = create<CanteenState>()(
             price: state.settings.prices.dinner,
           },
           breakfast: {
-            eaten: state.settings.defaults.breakfastEaten,
+            eaten: isBreakfastEaten,
             item: '',
             price: 0,
-            isIncomplete: state.settings.defaults.breakfastEaten,
+            isIncomplete: isBreakfastEaten, // incomplete only if eaten by default
           },
           masu: {
             quantity: 0,
@@ -150,7 +170,7 @@ export const useCanteenStore = create<CanteenState>()(
             unitPrice: state.settings.prices.omelette,
           },
           customItems,
-          isSaved: isToday, // Today is always saved by default; past/future require user tick
+          isSaved: isToday,
           createdAt: now,
           updatedAt: now,
         };
@@ -161,7 +181,6 @@ export const useCanteenStore = create<CanteenState>()(
         if (state.records[date]) {
           return state.records[date];
         }
-        // If it is today, auto-create and persist it
         if (isTodayISO(date)) {
           const newTodayRecord = state.createDefaultRecord(date);
           set((prev) => ({
@@ -190,7 +209,6 @@ export const useCanteenStore = create<CanteenState>()(
       },
 
       unsaveDayRecord: (date: string) => {
-        // Today's date cannot be permanently unsaved, but non-today dates can be removed
         if (isTodayISO(date)) return;
         set((state) => {
           const nextRecords = { ...state.records };
@@ -200,7 +218,6 @@ export const useCanteenStore = create<CanteenState>()(
       },
 
       updateRecord: (record: DailyRecord) => {
-        // If today or already saved, persist directly
         if (isTodayISO(record.date) || record.isSaved) {
           get().saveDayRecord(record);
         }
@@ -219,7 +236,6 @@ export const useCanteenStore = create<CanteenState>()(
           },
           updatedAt: new Date().toISOString(),
         };
-        // Auto-save if today or already saved
         if (isTodayISO(date) || existing.isSaved) {
           state.saveDayRecord(updated);
         }
@@ -390,10 +406,15 @@ export const useCanteenStore = create<CanteenState>()(
         const currentVal = existing.customItems?.[optionId] || {
           id: optionId,
           name: option?.name || 'Custom Item',
-          type: 'toggle' as CustomOptionType,
+          type: (option?.type || 'toggle') as CustomOptionType,
           price: option?.defaultPrice || 0,
           eaten: false,
         };
+
+        const nextEaten = !currentVal.eaten;
+        const isIncomplete = option?.type === 'multi_choice'
+          ? (nextEaten ? (!currentVal.item || currentVal.price <= 0) : false)
+          : false;
 
         const updated: DailyRecord = {
           ...existing,
@@ -401,8 +422,9 @@ export const useCanteenStore = create<CanteenState>()(
             ...(existing.customItems || {}),
             [optionId]: {
               ...currentVal,
-              eaten: !currentVal.eaten,
-              price: currentVal.price || option?.defaultPrice || 0,
+              eaten: nextEaten,
+              price: currentVal.price || (option?.type === 'multi_choice' ? 0 : option?.defaultPrice || 0),
+              isIncomplete,
             },
           },
           updatedAt: new Date().toISOString(),
@@ -492,8 +514,35 @@ export const useCanteenStore = create<CanteenState>()(
         }
       },
 
+      setCustomMultiChoice: (date: string, optionId: string, item: string, price: number) => {
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const option = state.customOptions.find((o) => o.id === optionId);
+        const safePrice = Math.max(0, price);
+
+        const updated: DailyRecord = {
+          ...existing,
+          customItems: {
+            ...(existing.customItems || {}),
+            [optionId]: {
+              id: optionId,
+              name: option?.name || 'Custom Option',
+              type: 'multi_choice',
+              eaten: true,
+              item: item.trim(),
+              price: safePrice,
+              isIncomplete: !item.trim() || safePrice <= 0,
+            },
+          },
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
+      },
+
       // Custom Options Management in Settings
-      addCustomOption: (name, type, defaultPrice, defaultEaten, defaultQuantity) => {
+      addCustomOption: (name, type, defaultPrice, defaultEaten, defaultQuantity, presets = []) => {
         const trimmed = name.trim();
         if (!trimmed) return;
         const newOption: CustomFoodOption = {
@@ -503,6 +552,7 @@ export const useCanteenStore = create<CanteenState>()(
           defaultPrice: Math.max(0, defaultPrice),
           defaultEaten: Boolean(defaultEaten),
           defaultQuantity: Math.max(0, defaultQuantity),
+          presets: [...presets],
         };
         set((state) => ({
           customOptions: [...state.customOptions, newOption],
@@ -520,6 +570,33 @@ export const useCanteenStore = create<CanteenState>()(
       deleteCustomOption: (id) => {
         set((state) => ({
           customOptions: state.customOptions.filter((opt) => opt.id !== id),
+        }));
+      },
+
+      addPresetToCustomOption: (optionId, label, price) => {
+        const trimmed = label.trim();
+        if (!trimmed) return;
+        const newPreset: CustomOptionPreset = {
+          id: `pr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          label: trimmed,
+          price: Math.max(0, price),
+        };
+        set((state) => ({
+          customOptions: state.customOptions.map((opt) =>
+            opt.id === optionId
+              ? { ...opt, presets: [...(opt.presets || []), newPreset] }
+              : opt
+          ),
+        }));
+      },
+
+      deletePresetFromCustomOption: (optionId, presetId) => {
+        set((state) => ({
+          customOptions: state.customOptions.map((opt) =>
+            opt.id === optionId
+              ? { ...opt, presets: (opt.presets || []).filter((p) => p.id !== presetId) }
+              : opt
+          ),
         }));
       },
 
@@ -600,7 +677,7 @@ export const useCanteenStore = create<CanteenState>()(
       },
     }),
     {
-      name: 'wrc_hostel_canteen_store_v2',
+      name: 'wrc_hostel_canteen_store_v3',
       version: CURRENT_SCHEMA_VERSION,
     }
   )
