@@ -1,0 +1,514 @@
+import React, { useState, useRef } from 'react';
+import {
+  Settings as SettingsIcon,
+  Plus,
+  Trash2,
+  Download,
+  Upload,
+  AlertOctagon,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+  Edit2,
+  X,
+  Moon,
+  Sun,
+} from 'lucide-react';
+import { useCanteenStore } from '../store/canteenStore';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { BackupPayload, BreakfastPreset } from '../types/canteen';
+import { getTodayISODate } from '../utils/nepaliDate';
+
+interface SettingsPageProps {
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
+}
+
+export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggleDarkMode }) => {
+  const {
+    settings,
+    breakfastPresets,
+    records,
+    monthSnapshots,
+    schemaVersion,
+    updateSettingsPrices,
+    addBreakfastPreset,
+    updateBreakfastPreset,
+    deleteBreakfastPreset,
+    importBackup,
+    clearAllData,
+  } = useCanteenStore();
+
+  // Local state for default prices form
+  const [morningPrice, setMorningPrice] = useState(String(settings.prices.morningFood));
+  const [dinnerPrice, setDinnerPrice] = useState(String(settings.prices.dinner));
+  const [masuPrice, setMasuPrice] = useState(String(settings.prices.masu));
+  const [omelettePrice, setOmelettePrice] = useState(String(settings.prices.omelette));
+  const [priceSaveMessage, setPriceSaveMessage] = useState(false);
+
+  // Preset addition / editing state
+  const [newPresetName, setNewPresetName] = useState('');
+  const [newPresetPrice, setNewPresetPrice] = useState('');
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+  const [editPresetName, setEditPresetName] = useState('');
+  const [editPresetPrice, setEditPresetPrice] = useState('');
+
+  // Modals state
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [pendingImportData, setPendingImportData] = useState<BackupPayload | null>(null);
+  const [importErrorMessage, setImportErrorMessage] = useState<string | null>(null);
+  const [backupSuccessMessage, setBackupSuccessMessage] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSavePrices = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSettingsPrices({
+      morningFood: Math.max(0, parseFloat(morningPrice) || 0),
+      dinner: Math.max(0, parseFloat(dinnerPrice) || 0),
+      masu: Math.max(0, parseFloat(masuPrice) || 0),
+      omelette: Math.max(0, parseFloat(omelettePrice) || 0),
+    });
+    setPriceSaveMessage(true);
+    setTimeout(() => setPriceSaveMessage(false), 3000);
+  };
+
+  const handleAddPreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPresetName.trim() && parseFloat(newPresetPrice) > 0) {
+      addBreakfastPreset(newPresetName.trim(), parseFloat(newPresetPrice));
+      setNewPresetName('');
+      setNewPresetPrice('');
+    }
+  };
+
+  const startEditPreset = (preset: BreakfastPreset) => {
+    setEditingPresetId(preset.id);
+    setEditPresetName(preset.label);
+    setEditPresetPrice(String(preset.price));
+  };
+
+  const saveEditedPreset = (id: string) => {
+    if (editPresetName.trim() && parseFloat(editPresetPrice) > 0) {
+      updateBreakfastPreset(id, editPresetName.trim(), parseFloat(editPresetPrice));
+      setEditingPresetId(null);
+    }
+  };
+
+  // Export JSON Backup
+  const handleExportBackup = () => {
+    const backupData: BackupPayload = {
+      schemaVersion,
+      exportedAt: new Date().toISOString(),
+      settings,
+      breakfastPresets,
+      records,
+      monthSnapshots,
+    };
+
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `canteen-tracker-backup-${getTodayISODate()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setBackupSuccessMessage('Backup file downloaded successfully!');
+    setTimeout(() => setBackupSuccessMessage(null), 3500);
+  };
+
+  // Import JSON Backup
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (!parsed || typeof parsed !== 'object' || !parsed.schemaVersion || !parsed.records) {
+          setImportErrorMessage('Invalid backup format: missing schemaVersion or records.');
+          return;
+        }
+        setPendingImportData(parsed as BackupPayload);
+      } catch {
+        setImportErrorMessage('Failed to read file. Please ensure it is a valid JSON backup.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset file input so same file can be re-selected if desired
+    e.target.value = '';
+  };
+
+  const handleConfirmImport = () => {
+    if (!pendingImportData) return;
+    const result = importBackup(pendingImportData);
+    if (result.success) {
+      setBackupSuccessMessage('Data successfully restored from backup!');
+      setPendingImportData(null);
+      setTimeout(() => setBackupSuccessMessage(null), 3500);
+    } else {
+      setImportErrorMessage(result.error || 'Failed to restore backup.');
+      setPendingImportData(null);
+    }
+  };
+
+  const handleConfirmClearAll = () => {
+    clearAllData();
+    setShowClearModal(false);
+    setBackupSuccessMessage('All records cleared successfully.');
+    setTimeout(() => setBackupSuccessMessage(null), 3500);
+  };
+
+  return (
+    <div className="min-h-screen pb-28">
+      {/* Settings Header */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <SettingsIcon className="w-5 h-5 text-amber-500" />
+            <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+              Settings
+            </h1>
+          </div>
+
+          {/* Dark / Light Mode Switcher */}
+          <button
+            type="button"
+            onClick={onToggleDarkMode}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
+            aria-label="Toggle theme mode"
+          >
+            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+          </button>
+        </div>
+      </div>
+
+      <main className="max-w-md mx-auto px-4 py-4 space-y-5">
+        {/* Success / Error Notification */}
+        {backupSuccessMessage && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 flex items-center space-x-2.5 text-emerald-800 dark:text-emerald-200 text-xs animate-fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>{backupSuccessMessage}</span>
+          </div>
+        )}
+
+        {importErrorMessage && (
+          <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-3 flex items-center space-x-2.5 text-rose-800 dark:text-rose-200 text-xs animate-fade-in">
+            <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+            <span>{importErrorMessage}</span>
+          </div>
+        )}
+
+        {/* Section 1: Default Food Prices */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Default Meal & Addon Prices
+            </h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              These prices apply when creating new days. Existing historical records remain frozen at their saved rates.
+            </p>
+          </div>
+
+          <form onSubmit={handleSavePrices} className="space-y-3 pt-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Morning Food (Rs.)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={morningPrice}
+                  onChange={(e) => setMorningPrice(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Dinner (Rs.)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={dinnerPrice}
+                  onChange={(e) => setDinnerPrice(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Masu Unit (Rs.)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={masuPrice}
+                  onChange={(e) => setMasuPrice(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Omelette Unit (Rs.)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={omelettePrice}
+                  onChange={(e) => setOmelettePrice(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:border-amber-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              {priceSaveMessage ? (
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                  ✓ Prices saved!
+                </span>
+              ) : (
+                <span />
+              )}
+              <button
+                type="submit"
+                className="py-2 px-4 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition"
+              >
+                Update Default Prices
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* Section 2: Breakfast Presets */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Breakfast Presets
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Quick-tap items available on the daily tracker.
+              </p>
+            </div>
+          </div>
+
+          {/* List of Presets */}
+          <div className="space-y-2">
+            {breakfastPresets.map((preset) => (
+              <div
+                key={preset.id}
+                className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs"
+              >
+                {editingPresetId === preset.id ? (
+                  <div className="flex items-center space-x-2 flex-1 mr-2">
+                    <input
+                      type="text"
+                      value={editPresetName}
+                      onChange={(e) => setEditPresetName(e.target.value)}
+                      className="w-1/2 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={editPresetPrice}
+                      onChange={(e) => setEditPresetPrice(e.target.value)}
+                      className="w-1/3 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => saveEditedPreset(preset.id)}
+                      className="text-emerald-600 dark:text-emerald-400 font-bold px-1"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingPresetId(null)}
+                      className="text-slate-400 font-bold px-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        {preset.label}
+                      </span>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">
+                        Rs. {preset.price}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-1">
+                      <button
+                        type="button"
+                        onClick={() => startEditPreset(preset)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+                        title="Edit preset"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteBreakfastPreset(preset.id)}
+                        className="p-1.5 text-rose-400 hover:text-rose-600 rounded-lg"
+                        title="Delete preset"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add Preset Form */}
+          <form onSubmit={handleAddPreset} className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+              + Add New Preset
+            </span>
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                placeholder="Item (e.g. Samosa)"
+                value={newPresetName}
+                onChange={(e) => setNewPresetName(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                required
+              />
+              <input
+                type="number"
+                min="1"
+                placeholder="Rs."
+                value={newPresetPrice}
+                onChange={(e) => setNewPresetPrice(e.target.value)}
+                className="w-20 px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                required
+              />
+              <button
+                type="submit"
+                className="p-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl active:scale-95 transition"
+                title="Add Preset"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* Section 3: Data Backup & Restore */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Backup & Restore
+            </h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Your canteen data is stored 100% locally on this device. Export a backup anytime to keep a safe copy.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleExportBackup}
+              className="py-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-center space-x-1.5 transition active:scale-95"
+            >
+              <Download className="w-4 h-4 text-amber-500" />
+              <span>Export JSON</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="py-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-center space-x-1.5 transition active:scale-95"
+            >
+              <Upload className="w-4 h-4 text-amber-500" />
+              <span>Import JSON</span>
+            </button>
+
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".json,application/json"
+              className="hidden"
+            />
+          </div>
+        </section>
+
+        {/* Section 4: Danger Zone */}
+        <section className="bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center space-x-2 text-rose-700 dark:text-rose-400">
+            <AlertOctagon className="w-4 h-4" />
+            <h2 className="text-sm font-semibold">Danger Zone</h2>
+          </div>
+          <p className="text-[11px] text-rose-600/90 dark:text-rose-300/80">
+            Permanently deletes all recorded meals and saved monthly snapshots from this browser.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setShowClearModal(true)}
+            className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-semibold text-xs rounded-xl shadow-xs transition"
+          >
+            Clear All Stored Records
+          </button>
+        </section>
+
+        {/* Section 5: App Information */}
+        <div className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
+          <div className="flex items-center justify-center space-x-1.5">
+            <Info className="w-3.5 h-3.5" />
+            <span className="font-semibold text-slate-600 dark:text-slate-400">
+              Canteen Tracker PWA v1.0.0
+            </span>
+          </div>
+          <p className="text-[11px]">
+            Designed with 💖 by Your Zara & Jagdish • 100% Offline
+          </p>
+        </div>
+      </main>
+
+      {/* Confirmation Modal for Import */}
+      <ConfirmModal
+        isOpen={Boolean(pendingImportData)}
+        title="Restore Backup Data"
+        message="Importing this file will replace your current local records and snapshots. Make sure you have exported your current data if you still need it."
+        confirmLabel="Replace & Restore"
+        cancelLabel="Cancel"
+        isDanger={true}
+        onConfirm={handleConfirmImport}
+        onCancel={() => setPendingImportData(null)}
+      />
+
+      {/* Confirmation Modal for Clear All */}
+      <ConfirmModal
+        isOpen={showClearModal}
+        title="Delete All Local Data"
+        message="This will permanently remove all locally stored canteen records and snapshots from this device. This action cannot be undone unless you have an exported backup."
+        confirmLabel="Delete Everything"
+        cancelLabel="Keep My Data"
+        isDanger={true}
+        onConfirm={handleConfirmClearAll}
+        onCancel={() => setShowClearModal(false)}
+      />
+    </div>
+  );
+};
