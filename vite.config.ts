@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Canteen Tracker',
-        short_name: 'Canteen',
-        description: 'Track daily canteen meals and calculate monthly bills with Nepali calendar',
+        name: 'WRC Hostel Canteen Tracker',
+        short_name: 'WRC Hostel',
+        description: 'Track daily WRC Hostel canteen meals and calculate monthly bills with Nepali calendar',
         theme_color: '#d97706',
         background_color: '#f8fafc',
         display: 'standalone',

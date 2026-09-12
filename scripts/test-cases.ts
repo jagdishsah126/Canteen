@@ -2,7 +2,7 @@ import { calculateDailyCost, aggregateMonthlySummary } from '../src/utils/billin
 import { isoToBS } from '../src/utils/nepaliDate';
 import { DailyRecord } from '../src/types/canteen';
 
-console.log('🧪 Starting Canteen Tracker Test Suite...\n');
+console.log('🧪 Starting WRC Hostel Canteen Tracker Test Suite...\n');
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -24,6 +24,7 @@ function makeRecord(overrides: Partial<DailyRecord> = {}): DailyRecord {
     omelette: { quantity: 0, unitPrice: 30 },
     createdAt: '2026-09-12T12:00:00.000Z',
     updatedAt: '2026-09-12T12:00:00.000Z',
+    isSaved: true,
     ...overrides,
   };
 }
@@ -72,16 +73,44 @@ const caseIncomplete = makeRecord({
 const resIncomplete = calculateDailyCost(caseIncomplete);
 assert(resIncomplete.isIncomplete === true, 'Incomplete breakfast must be flagged');
 
-// Monthly Aggregation Test
-const monthly = aggregateMonthlySummary([case1, case2, case3, case4, case5, caseIncomplete]);
-assert(monthly.totalRecordsCount === 6, 'Monthly should count 6 records');
+// Case 6: Dynamic Custom Food Options (Milk quantity + Afternoon snack toggle)
+const caseCustom = makeRecord({
+  customItems: {
+    opt_milk: {
+      id: 'opt_milk',
+      name: 'Milk',
+      type: 'quantity',
+      quantity: 2,
+      price: 25,
+    },
+    opt_snack: {
+      id: 'opt_snack',
+      name: 'Afternoon Snack',
+      type: 'toggle',
+      eaten: true,
+      price: 40,
+    },
+  },
+});
+const resCustom = calculateDailyCost(caseCustom);
+// Base: 72 + 50 + 72 = 194. Milk: 2*25 = 50. Snack: 40. Total = 194 + 50 + 40 = 284
+assert(resCustom.customItemsCost === 90, `Custom items cost expected 90, got ${resCustom.customItemsCost}`);
+assert(resCustom.totalCost === 284, `Daily total with custom items expected 284, got ${resCustom.totalCost}`);
+
+// Monthly Aggregation Test (including custom items)
+const monthly = aggregateMonthlySummary([case1, case2, case3, case4, case5, caseIncomplete, caseCustom]);
+assert(monthly.totalRecordsCount === 7, 'Monthly should count 7 records');
 assert(monthly.incompleteRecordsCount === 1, 'Monthly should flag 1 incomplete record');
 assert(monthly.masuTotalQuantity === 2, 'Monthly masu total count is 2');
 assert(monthly.omeletteTotalQuantity === 3, 'Monthly omelette total count is 3');
+assert(monthly.customItemsSummary['opt_milk']?.countOrQuantity === 2, 'Monthly milk count is 2');
+assert(monthly.customItemsSummary['opt_milk']?.totalCost === 50, 'Monthly milk cost is 50');
+assert(monthly.customItemsSummary['opt_snack']?.countOrQuantity === 1, 'Monthly snack count is 1');
+assert(monthly.customItemsSummary['opt_snack']?.totalCost === 40, 'Monthly snack cost is 40');
 
 // Bikram Sambat Conversion Test
 const bs = isoToBS('2026-09-12');
 assert(bs.year > 2080, `BS Year should be Bikram Sambat (> 2080), got ${bs.year}`);
 assert(typeof bs.monthName === 'string' && bs.monthName.length > 0, `BS month name exists: ${bs.monthName}`);
 
-console.log('\n🎉 ALL 8 TEST CASES AND VALIDATIONS PASSED PERFECTLY!\n');
+console.log('\n🎉 ALL 10 WRC HOSTEL TEST CASES AND CUSTOM OPTION VALIDATIONS PASSED PERFECTLY!\n');

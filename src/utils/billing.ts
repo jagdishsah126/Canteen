@@ -1,11 +1,21 @@
 import { DailyRecord } from '../types/canteen';
 
+export interface DailyCustomBreakdownItem {
+  id: string;
+  name: string;
+  type: 'toggle' | 'quantity';
+  cost: number;
+  quantityOrEaten: number | boolean;
+}
+
 export interface DailyCostBreakdown {
   morningFoodCost: number;
   breakfastCost: number;
   dinnerCost: number;
   masuCost: number;
   omeletteCost: number;
+  customItemsCost: number;
+  customBreakdown: Record<string, DailyCustomBreakdownItem>;
   totalCost: number;
   isIncomplete: boolean;
 }
@@ -22,6 +32,8 @@ export function calculateDailyCost(record?: DailyRecord | null): DailyCostBreakd
       dinnerCost: 0,
       masuCost: 0,
       omeletteCost: 0,
+      customItemsCost: 0,
+      customBreakdown: {},
       totalCost: 0,
       isIncomplete: false,
     };
@@ -31,7 +43,6 @@ export function calculateDailyCost(record?: DailyRecord | null): DailyCostBreakd
   const dinnerCost = record.dinner.eaten ? (record.dinner.price || 0) : 0;
   
   // Breakfast: if marked eaten, must have item and price.
-  // If eaten is true but price is 0 and item is empty or marked isIncomplete, flag it.
   const isBreakfastIncomplete = Boolean(
     record.breakfast.eaten && (record.breakfast.isIncomplete || !record.breakfast.item || record.breakfast.price <= 0)
   );
@@ -45,7 +56,38 @@ export function calculateDailyCost(record?: DailyRecord | null): DailyCostBreakd
   const omeletteQuantity = Math.max(0, record.omelette.quantity || 0);
   const omeletteCost = omeletteQuantity * (record.omelette.unitPrice || 0);
 
-  const totalCost = morningFoodCost + breakfastCost + dinnerCost + masuCost + omeletteCost;
+  // Dynamic Custom Options
+  let customItemsCost = 0;
+  const customBreakdown: Record<string, DailyCustomBreakdownItem> = {};
+
+  if (record.customItems) {
+    for (const [id, item] of Object.entries(record.customItems)) {
+      if (item.type === 'toggle') {
+        const cost = item.eaten ? (item.price || 0) : 0;
+        customItemsCost += cost;
+        customBreakdown[id] = {
+          id,
+          name: item.name,
+          type: 'toggle',
+          cost,
+          quantityOrEaten: Boolean(item.eaten),
+        };
+      } else {
+        const qty = Math.max(0, item.quantity || 0);
+        const cost = qty * (item.price || 0);
+        customItemsCost += cost;
+        customBreakdown[id] = {
+          id,
+          name: item.name,
+          type: 'quantity',
+          cost,
+          quantityOrEaten: qty,
+        };
+      }
+    }
+  }
+
+  const totalCost = morningFoodCost + breakfastCost + dinnerCost + masuCost + omeletteCost + customItemsCost;
 
   return {
     morningFoodCost,
@@ -53,9 +95,19 @@ export function calculateDailyCost(record?: DailyRecord | null): DailyCostBreakd
     dinnerCost,
     masuCost,
     omeletteCost,
+    customItemsCost,
+    customBreakdown,
     totalCost,
     isIncomplete: isBreakfastIncomplete,
   };
+}
+
+export interface MonthlyCustomItemSummary {
+  id: string;
+  name: string;
+  type: 'toggle' | 'quantity';
+  countOrQuantity: number;
+  totalCost: number;
 }
 
 export interface MonthlyAggregatedSummary {
@@ -77,6 +129,8 @@ export interface MonthlyAggregatedSummary {
 
   omeletteTotalQuantity: number;
   omeletteTotalCost: number;
+
+  customItemsSummary: Record<string, MonthlyCustomItemSummary>;
 
   dailyBreakdowns: Array<{
     date: string;
@@ -103,6 +157,7 @@ export function aggregateMonthlySummary(recordsList: DailyRecord[]): MonthlyAggr
     masuTotalCost: 0,
     omeletteTotalQuantity: 0,
     omeletteTotalCost: 0,
+    customItemsSummary: {},
     dailyBreakdowns: [],
   };
 
@@ -138,6 +193,27 @@ export function aggregateMonthlySummary(recordsList: DailyRecord[]): MonthlyAggr
     if (record.omelette.quantity > 0) {
       summary.omeletteTotalQuantity += record.omelette.quantity;
       summary.omeletteTotalCost += breakdown.omeletteCost;
+    }
+
+    // Process custom items for monthly aggregation
+    for (const [id, item] of Object.entries(breakdown.customBreakdown)) {
+      if (!summary.customItemsSummary[id]) {
+        summary.customItemsSummary[id] = {
+          id,
+          name: item.name,
+          type: item.type,
+          countOrQuantity: 0,
+          totalCost: 0,
+        };
+      }
+
+      if (item.type === 'toggle' && item.quantityOrEaten) {
+        summary.customItemsSummary[id].countOrQuantity += 1;
+        summary.customItemsSummary[id].totalCost += item.cost;
+      } else if (item.type === 'quantity' && typeof item.quantityOrEaten === 'number' && item.quantityOrEaten > 0) {
+        summary.customItemsSummary[id].countOrQuantity += item.quantityOrEaten;
+        summary.customItemsSummary[id].totalCost += item.cost;
+      }
     }
 
     summary.totalAmount += breakdown.totalCost;

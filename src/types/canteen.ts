@@ -15,6 +15,26 @@ export interface ExtraItemRecord {
   unitPrice: number;
 }
 
+export type CustomOptionType = 'toggle' | 'quantity';
+
+export interface CustomFoodOption {
+  id: string;
+  name: string;
+  type: CustomOptionType;
+  defaultPrice: number;
+  defaultEaten: boolean;    // for toggle
+  defaultQuantity: number; // for quantity
+}
+
+export interface DailyCustomItemValue {
+  id: string;
+  name: string;
+  type: CustomOptionType;
+  eaten?: boolean;
+  quantity?: number;
+  price: number; // Frozen price at record time
+}
+
 export interface DailyRecord {
   date: string; // ISO format "YYYY-MM-DD"
   morningFood: MealRecord;
@@ -22,6 +42,8 @@ export interface DailyRecord {
   breakfast: BreakfastRecord;
   masu: ExtraItemRecord;
   omelette: ExtraItemRecord;
+  customItems?: Record<string, DailyCustomItemValue>;
+  isSaved?: boolean; // explicitly saved for past/future days, or auto-saved for today
   createdAt: string;
   updatedAt: string;
 }
@@ -61,6 +83,7 @@ export interface MonthSnapshot {
   masuCost: number;
   omeletteQuantity: number;
   omeletteCost: number;
+  customItemsTotals?: Record<string, { name: string; quantityOrDays: number; cost: number }>;
   closedAt: string; // ISO date-time
 }
 
@@ -70,8 +93,10 @@ export interface BackupPayload {
   settings: {
     prices: CanteenPrices;
     defaults: CanteenDefaults;
+    customOptions?: CustomFoodOption[];
   };
   breakfastPresets: BreakfastPreset[];
+  customOptions?: CustomFoodOption[];
   records: Record<string, DailyRecord>;
   monthSnapshots: Record<string, MonthSnapshot>;
 }

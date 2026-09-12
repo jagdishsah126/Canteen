@@ -56,13 +56,13 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
     }
   };
 
-  // Find all records belonging to this BS month
+  // Find all records belonging to this BS month that are saved (or today)
   const monthlyData: MonthlyAggregatedSummary = useMemo(() => {
-    // Generate all valid ISO dates that fall into this BS month
     const validMonthDates = new Set(getISODatesForBSMonth(selectedYear, selectedMonthIndex));
     
-    // Also check any record in store whose BS conversion matches this month/year
     const matchedRecords = Object.values(records).filter((rec) => {
+      // Must be marked as saved
+      if (rec.isSaved === false) return false;
       if (validMonthDates.has(rec.date)) return true;
       const bs = isoToBS(rec.date);
       return bs.year === selectedYear && bs.monthIndex === selectedMonthIndex;
@@ -100,35 +100,40 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
   return (
     <div className="min-h-screen pb-24">
       {/* Month Picker Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <button
-            onClick={handlePrevMonth}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition active:scale-95"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <div className="text-center">
-            <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center justify-center space-x-1.5">
-              <Calendar className="w-4 h-4 text-amber-500" />
-              <span>
-                {monthName} {selectedYear}
-              </span>
-            </h1>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              {monthlyData.totalRecordsCount} days recorded
-            </p>
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-md mx-auto">
+          <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-1">
+            🍱 WRC Hostel • Monthly Bill Ledger
           </div>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={handlePrevMonth}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition active:scale-95"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
 
-          <button
-            onClick={handleNextMonth}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition active:scale-95"
-            aria-label="Next month"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+            <div className="text-center">
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center justify-center space-x-1.5">
+                <Calendar className="w-4 h-4 text-amber-500" />
+                <span>
+                  {monthName} {selectedYear}
+                </span>
+              </h1>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                {monthlyData.totalRecordsCount} confirmed days recorded
+              </p>
+            </div>
+
+            <button
+              onClick={handleNextMonth}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition active:scale-95"
+              aria-label="Next month"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -267,6 +272,25 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
                 Rs. {monthlyData.omeletteTotalCost}
               </div>
             </div>
+
+            {/* Custom Hostel Options Breakdown */}
+            {Object.values(monthlyData.customItemsSummary).map((cItem) => (
+              <div key={cItem.id} className="py-2.5 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-200">
+                    {cItem.name}
+                  </div>
+                  <div className="text-slate-400 dark:text-slate-500 text-[11px]">
+                    {cItem.type === 'toggle'
+                      ? `${cItem.countOrQuantity} days eaten`
+                      : `${cItem.countOrQuantity} units consumed`}
+                  </div>
+                </div>
+                <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                  Rs. {cItem.totalCost}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -281,7 +305,7 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
 
           {monthlyData.dailyBreakdowns.length === 0 ? (
             <p className="text-xs text-slate-400 py-4 text-center">
-              No food records found for {monthName} {selectedYear}.
+              No confirmed food records found for {monthName} {selectedYear}.
             </p>
           ) : (
             <div className="space-y-2">
@@ -359,6 +383,18 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
                               {record.omelette.quantity} pcs (Rs. {breakdown.omeletteCost})
                             </span>
                           </div>
+
+                          {/* Dynamic Custom Items in Daily Detail */}
+                          {Object.values(breakdown.customBreakdown).map((ci) => (
+                            <div key={ci.id} className="col-span-2 sm:col-span-1">
+                              {ci.name}:{' '}
+                              <span className="font-semibold">
+                                {ci.type === 'toggle'
+                                  ? (ci.quantityOrEaten ? `Yes (Rs. ${ci.cost})` : 'No')
+                                  : `${ci.quantityOrEaten} units (Rs. ${ci.cost})`}
+                              </span>
+                            </div>
+                          ))}
                         </div>
 
                         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">

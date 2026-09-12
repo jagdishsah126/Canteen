@@ -7,9 +7,12 @@ import {
   BreakfastPreset,
   MonthSnapshot,
   BackupPayload,
+  CustomFoodOption,
+  CustomOptionType,
 } from '../types/canteen';
+import { isTodayISO } from '../utils/nepaliDate';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export const INITIAL_PRICES: CanteenPrices = {
   morningFood: 72,
@@ -37,11 +40,20 @@ export interface CanteenState {
     defaults: CanteenDefaults;
   };
   breakfastPresets: BreakfastPreset[];
+  customOptions: CustomFoodOption[];
   records: Record<string, DailyRecord>;
   monthSnapshots: Record<string, MonthSnapshot>;
 
-  // Record Actions
-  getOrCreateRecord: (date: string) => DailyRecord;
+  // Factory to create a record structure
+  createDefaultRecord: (date: string) => DailyRecord;
+
+  // Record management
+  getRecordForDate: (date: string) => DailyRecord | null;
+  saveDayRecord: (record: DailyRecord) => void;
+  unsaveDayRecord: (date: string) => void;
+  updateRecord: (record: DailyRecord) => void;
+
+  // Direct actions
   toggleMorningFood: (date: string) => void;
   toggleDinner: (date: string) => void;
   toggleBreakfast: (date: string) => void;
@@ -52,6 +64,23 @@ export interface CanteenState {
   incrementOmelette: (date: string) => void;
   decrementOmelette: (date: string) => void;
   setOmeletteQuantity: (date: string, quantity: number) => void;
+
+  // Custom Items Actions
+  toggleCustomItem: (date: string, optionId: string) => void;
+  incrementCustomItem: (date: string, optionId: string) => void;
+  decrementCustomItem: (date: string, optionId: string) => void;
+  setCustomItemQuantity: (date: string, optionId: string, quantity: number) => void;
+
+  // Custom Options Management (Settings)
+  addCustomOption: (
+    name: string,
+    type: CustomOptionType,
+    defaultPrice: number,
+    defaultEaten: boolean,
+    defaultQuantity: number
+  ) => void;
+  updateCustomOption: (id: string, updates: Partial<CustomFoodOption>) => void;
+  deleteCustomOption: (id: string) => void;
 
   // Settings & Presets Actions
   updateSettingsPrices: (prices: Partial<CanteenPrices>) => void;
@@ -74,17 +103,29 @@ export const useCanteenStore = create<CanteenState>()(
         defaults: { ...INITIAL_DEFAULTS },
       },
       breakfastPresets: [...INITIAL_BREAKFAST_PRESETS],
+      customOptions: [],
       records: {},
       monthSnapshots: {},
 
-      getOrCreateRecord: (date: string) => {
+      createDefaultRecord: (date: string) => {
         const state = get();
-        if (state.records[date]) {
-          return state.records[date];
+        const now = new Date().toISOString();
+        const isToday = isTodayISO(date);
+
+        // Build default custom items values
+        const customItems: Record<string, any> = {};
+        for (const opt of state.customOptions) {
+          customItems[opt.id] = {
+            id: opt.id,
+            name: opt.name,
+            type: opt.type,
+            price: opt.defaultPrice,
+            eaten: opt.defaultEaten,
+            quantity: opt.defaultQuantity,
+          };
         }
 
-        const now = new Date().toISOString();
-        const newRecord: DailyRecord = {
+        return {
           date,
           morningFood: {
             eaten: state.settings.defaults.morningFoodEaten,
@@ -98,7 +139,7 @@ export const useCanteenStore = create<CanteenState>()(
             eaten: state.settings.defaults.breakfastEaten,
             item: '',
             price: 0,
-            isIncomplete: state.settings.defaults.breakfastEaten, // Eaten by default, but item needs picking
+            isIncomplete: state.settings.defaults.breakfastEaten,
           },
           masu: {
             quantity: 0,
@@ -108,204 +149,377 @@ export const useCanteenStore = create<CanteenState>()(
             quantity: 0,
             unitPrice: state.settings.prices.omelette,
           },
+          customItems,
+          isSaved: isToday, // Today is always saved by default; past/future require user tick
           createdAt: now,
           updatedAt: now,
         };
+      },
 
-        set((prev) => ({
+      getRecordForDate: (date: string) => {
+        const state = get();
+        if (state.records[date]) {
+          return state.records[date];
+        }
+        // If it is today, auto-create and persist it
+        if (isTodayISO(date)) {
+          const newTodayRecord = state.createDefaultRecord(date);
+          set((prev) => ({
+            records: {
+              ...prev.records,
+              [date]: newTodayRecord,
+            },
+          }));
+          return newTodayRecord;
+        }
+        return null;
+      },
+
+      saveDayRecord: (record: DailyRecord) => {
+        const now = new Date().toISOString();
+        set((state) => ({
           records: {
-            ...prev.records,
-            [date]: newRecord,
+            ...state.records,
+            [record.date]: {
+              ...record,
+              isSaved: true,
+              updatedAt: now,
+            },
           },
         }));
+      },
 
-        return newRecord;
+      unsaveDayRecord: (date: string) => {
+        // Today's date cannot be permanently unsaved, but non-today dates can be removed
+        if (isTodayISO(date)) return;
+        set((state) => {
+          const nextRecords = { ...state.records };
+          delete nextRecords[date];
+          return { records: nextRecords };
+        });
+      },
+
+      updateRecord: (record: DailyRecord) => {
+        // If today or already saved, persist directly
+        if (isTodayISO(record.date) || record.isSaved) {
+          get().saveDayRecord(record);
+        }
       },
 
       toggleMorningFood: (date: string) => {
-        const record = get().getOrCreateRecord(date);
-        const nextEaten = !record.morningFood.eaten;
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              morningFood: {
-                ...record.morningFood,
-                eaten: nextEaten,
-                // Ensure price is assigned from settings if it was 0
-                price: record.morningFood.price || state.settings.prices.morningFood,
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const nextEaten = !existing.morningFood.eaten;
+        const updated: DailyRecord = {
+          ...existing,
+          morningFood: {
+            ...existing.morningFood,
+            eaten: nextEaten,
+            price: existing.morningFood.price || state.settings.prices.morningFood,
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        // Auto-save if today or already saved
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       toggleDinner: (date: string) => {
-        const record = get().getOrCreateRecord(date);
-        const nextEaten = !record.dinner.eaten;
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              dinner: {
-                ...record.dinner,
-                eaten: nextEaten,
-                price: record.dinner.price || state.settings.prices.dinner,
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const nextEaten = !existing.dinner.eaten;
+        const updated: DailyRecord = {
+          ...existing,
+          dinner: {
+            ...existing.dinner,
+            eaten: nextEaten,
+            price: existing.dinner.price || state.settings.prices.dinner,
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       toggleBreakfast: (date: string) => {
-        const record = get().getOrCreateRecord(date);
-        const nextEaten = !record.breakfast.eaten;
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              breakfast: {
-                ...record.breakfast,
-                eaten: nextEaten,
-                // If not eaten, cost is 0 and not incomplete. If eaten, flag incomplete if no price/item
-                isIncomplete: nextEaten ? (!record.breakfast.item || record.breakfast.price <= 0) : false,
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const nextEaten = !existing.breakfast.eaten;
+        const updated: DailyRecord = {
+          ...existing,
+          breakfast: {
+            ...existing.breakfast,
+            eaten: nextEaten,
+            isIncomplete: nextEaten ? (!existing.breakfast.item || existing.breakfast.price <= 0) : false,
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       setBreakfast: (date: string, item: string, price: number) => {
-        const record = get().getOrCreateRecord(date);
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
         const safePrice = Math.max(0, price);
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              breakfast: {
-                eaten: true,
-                item: item.trim(),
-                price: safePrice,
-                isIncomplete: !item.trim() || safePrice <= 0,
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const updated: DailyRecord = {
+          ...existing,
+          breakfast: {
+            eaten: true,
+            item: item.trim(),
+            price: safePrice,
+            isIncomplete: !item.trim() || safePrice <= 0,
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       incrementMasu: (date: string) => {
-        const record = get().getOrCreateRecord(date);
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              masu: {
-                ...record.masu,
-                quantity: record.masu.quantity + 1,
-                unitPrice: record.masu.unitPrice || state.settings.prices.masu,
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const updated: DailyRecord = {
+          ...existing,
+          masu: {
+            ...existing.masu,
+            quantity: existing.masu.quantity + 1,
+            unitPrice: existing.masu.unitPrice || state.settings.prices.masu,
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       decrementMasu: (date: string) => {
-        const record = get().getOrCreateRecord(date);
-        if (record.masu.quantity <= 0) return;
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              masu: {
-                ...record.masu,
-                quantity: Math.max(0, record.masu.quantity - 1),
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        if (existing.masu.quantity <= 0) return;
+        const updated: DailyRecord = {
+          ...existing,
+          masu: {
+            ...existing.masu,
+            quantity: Math.max(0, existing.masu.quantity - 1),
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       setMasuQuantity: (date: string, quantity: number) => {
-        const record = get().getOrCreateRecord(date);
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              masu: {
-                ...record.masu,
-                quantity: Math.max(0, Math.floor(quantity)),
-                unitPrice: record.masu.unitPrice || state.settings.prices.masu,
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const updated: DailyRecord = {
+          ...existing,
+          masu: {
+            ...existing.masu,
+            quantity: Math.max(0, Math.floor(quantity)),
+            unitPrice: existing.masu.unitPrice || state.settings.prices.masu,
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       incrementOmelette: (date: string) => {
-        const record = get().getOrCreateRecord(date);
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              omelette: {
-                ...record.omelette,
-                quantity: record.omelette.quantity + 1,
-                unitPrice: record.omelette.unitPrice || state.settings.prices.omelette,
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const updated: DailyRecord = {
+          ...existing,
+          omelette: {
+            ...existing.omelette,
+            quantity: existing.omelette.quantity + 1,
+            unitPrice: existing.omelette.unitPrice || state.settings.prices.omelette,
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       decrementOmelette: (date: string) => {
-        const record = get().getOrCreateRecord(date);
-        if (record.omelette.quantity <= 0) return;
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              omelette: {
-                ...record.omelette,
-                quantity: Math.max(0, record.omelette.quantity - 1),
-              },
-              updatedAt: new Date().toISOString(),
-            },
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        if (existing.omelette.quantity <= 0) return;
+        const updated: DailyRecord = {
+          ...existing,
+          omelette: {
+            ...existing.omelette,
+            quantity: Math.max(0, existing.omelette.quantity - 1),
           },
-        }));
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
       },
 
       setOmeletteQuantity: (date: string, quantity: number) => {
-        const record = get().getOrCreateRecord(date);
-        set((state) => ({
-          records: {
-            ...state.records,
-            [date]: {
-              ...record,
-              omelette: {
-                ...record.omelette,
-                quantity: Math.max(0, Math.floor(quantity)),
-                unitPrice: record.omelette.unitPrice || state.settings.prices.omelette,
-              },
-              updatedAt: new Date().toISOString(),
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const updated: DailyRecord = {
+          ...existing,
+          omelette: {
+            ...existing.omelette,
+            quantity: Math.max(0, Math.floor(quantity)),
+            unitPrice: existing.omelette.unitPrice || state.settings.prices.omelette,
+          },
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
+      },
+
+      // Custom Items Actions
+      toggleCustomItem: (date: string, optionId: string) => {
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const option = state.customOptions.find((o) => o.id === optionId);
+        const currentVal = existing.customItems?.[optionId] || {
+          id: optionId,
+          name: option?.name || 'Custom Item',
+          type: 'toggle' as CustomOptionType,
+          price: option?.defaultPrice || 0,
+          eaten: false,
+        };
+
+        const updated: DailyRecord = {
+          ...existing,
+          customItems: {
+            ...(existing.customItems || {}),
+            [optionId]: {
+              ...currentVal,
+              eaten: !currentVal.eaten,
+              price: currentVal.price || option?.defaultPrice || 0,
             },
           },
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
+      },
+
+      incrementCustomItem: (date: string, optionId: string) => {
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const option = state.customOptions.find((o) => o.id === optionId);
+        const currentVal = existing.customItems?.[optionId] || {
+          id: optionId,
+          name: option?.name || 'Custom Item',
+          type: 'quantity' as CustomOptionType,
+          price: option?.defaultPrice || 0,
+          quantity: 0,
+        };
+
+        const updated: DailyRecord = {
+          ...existing,
+          customItems: {
+            ...(existing.customItems || {}),
+            [optionId]: {
+              ...currentVal,
+              quantity: (currentVal.quantity || 0) + 1,
+              price: currentVal.price || option?.defaultPrice || 0,
+            },
+          },
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
+      },
+
+      decrementCustomItem: (date: string, optionId: string) => {
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const currentVal = existing.customItems?.[optionId];
+        if (!currentVal || (currentVal.quantity || 0) <= 0) return;
+
+        const updated: DailyRecord = {
+          ...existing,
+          customItems: {
+            ...(existing.customItems || {}),
+            [optionId]: {
+              ...currentVal,
+              quantity: Math.max(0, (currentVal.quantity || 0) - 1),
+            },
+          },
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
+      },
+
+      setCustomItemQuantity: (date: string, optionId: string, quantity: number) => {
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const option = state.customOptions.find((o) => o.id === optionId);
+        const currentVal = existing.customItems?.[optionId] || {
+          id: optionId,
+          name: option?.name || 'Custom Item',
+          type: 'quantity' as CustomOptionType,
+          price: option?.defaultPrice || 0,
+          quantity: 0,
+        };
+
+        const updated: DailyRecord = {
+          ...existing,
+          customItems: {
+            ...(existing.customItems || {}),
+            [optionId]: {
+              ...currentVal,
+              quantity: Math.max(0, Math.floor(quantity)),
+              price: currentVal.price || option?.defaultPrice || 0,
+            },
+          },
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
+        }
+      },
+
+      // Custom Options Management in Settings
+      addCustomOption: (name, type, defaultPrice, defaultEaten, defaultQuantity) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const newOption: CustomFoodOption = {
+          id: `opt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          name: trimmed,
+          type,
+          defaultPrice: Math.max(0, defaultPrice),
+          defaultEaten: Boolean(defaultEaten),
+          defaultQuantity: Math.max(0, defaultQuantity),
+        };
+        set((state) => ({
+          customOptions: [...state.customOptions, newOption],
+        }));
+      },
+
+      updateCustomOption: (id, updates) => {
+        set((state) => ({
+          customOptions: state.customOptions.map((opt) =>
+            opt.id === id ? { ...opt, ...updates } : opt
+          ),
+        }));
+      },
+
+      deleteCustomOption: (id) => {
+        set((state) => ({
+          customOptions: state.customOptions.filter((opt) => opt.id !== id),
         }));
       },
 
@@ -371,6 +585,7 @@ export const useCanteenStore = create<CanteenState>()(
           schemaVersion: backup.schemaVersion,
           settings: backup.settings,
           breakfastPresets: backup.breakfastPresets || [...INITIAL_BREAKFAST_PRESETS],
+          customOptions: backup.customOptions || backup.settings.customOptions || [],
           records: backup.records || {},
           monthSnapshots: backup.monthSnapshots || {},
         });
@@ -385,7 +600,7 @@ export const useCanteenStore = create<CanteenState>()(
       },
     }),
     {
-      name: 'canteen_tracker_store_v1',
+      name: 'wrc_hostel_canteen_store_v2',
       version: CURRENT_SCHEMA_VERSION,
     }
   )

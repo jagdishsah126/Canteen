@@ -13,10 +13,11 @@ import {
   X,
   Moon,
   Sun,
+  Layers,
 } from 'lucide-react';
 import { useCanteenStore } from '../store/canteenStore';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { BackupPayload, BreakfastPreset } from '../types/canteen';
+import { BackupPayload, BreakfastPreset, CustomOptionType } from '../types/canteen';
 import { getTodayISODate } from '../utils/nepaliDate';
 
 interface SettingsPageProps {
@@ -28,6 +29,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
   const {
     settings,
     breakfastPresets,
+    customOptions,
     records,
     monthSnapshots,
     schemaVersion,
@@ -35,6 +37,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
     addBreakfastPreset,
     updateBreakfastPreset,
     deleteBreakfastPreset,
+    addCustomOption,
+    deleteCustomOption,
     importBackup,
     clearAllData,
   } = useCanteenStore();
@@ -52,6 +56,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
   const [editPresetName, setEditPresetName] = useState('');
   const [editPresetPrice, setEditPresetPrice] = useState('');
+
+  // Custom Options addition state
+  const [newOptName, setNewOptName] = useState('');
+  const [newOptType, setNewOptType] = useState<CustomOptionType>('quantity');
+  const [newOptPrice, setNewOptPrice] = useState('');
+  const [newOptDefaultEaten, setNewOptDefaultEaten] = useState(false);
+  const [newOptDefaultQty, setNewOptDefaultQty] = useState('0');
 
   // Modals state
   const [showClearModal, setShowClearModal] = useState(false);
@@ -95,6 +106,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
     }
   };
 
+  const handleAddCustomOption = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOptName.trim() || !newOptPrice) return;
+    const priceNum = Math.max(0, parseFloat(newOptPrice) || 0);
+    const qtyNum = Math.max(0, parseInt(newOptDefaultQty, 10) || 0);
+
+    addCustomOption(
+      newOptName.trim(),
+      newOptType,
+      priceNum,
+      newOptDefaultEaten,
+      qtyNum
+    );
+
+    setNewOptName('');
+    setNewOptPrice('');
+    setNewOptDefaultEaten(false);
+    setNewOptDefaultQty('0');
+  };
+
   // Export JSON Backup
   const handleExportBackup = () => {
     const backupData: BackupPayload = {
@@ -102,6 +133,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
       exportedAt: new Date().toISOString(),
       settings,
       breakfastPresets,
+      customOptions,
       records,
       monthSnapshots,
     };
@@ -112,7 +144,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `canteen-tracker-backup-${getTodayISODate()}.json`;
+    link.download = `wrc-hostel-canteen-backup-${getTodayISODate()}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -131,8 +163,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        if (!parsed || typeof parsed !== 'object' || !parsed.schemaVersion || !parsed.records) {
-          setImportErrorMessage('Invalid backup format: missing schemaVersion or records.');
+        if (!parsed || typeof parsed !== 'object' || !parsed.records) {
+          setImportErrorMessage('Invalid backup format: missing records.');
           return;
         }
         setPendingImportData(parsed as BackupPayload);
@@ -141,7 +173,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
       }
     };
     reader.readAsText(file);
-    // Reset file input so same file can be re-selected if desired
     e.target.value = '';
   };
 
@@ -168,13 +199,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
   return (
     <div className="min-h-screen pb-28">
       {/* Settings Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 sticky top-0 z-30 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 sticky top-0 z-30 shadow-xs">
         <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <SettingsIcon className="w-5 h-5 text-amber-500" />
-            <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-              Settings
-            </h1>
+          <div>
+            <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+              🍱 WRC Hostel
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <SettingsIcon className="w-4 h-4 text-amber-500" />
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                Hostel Settings
+              </h1>
+            </div>
           </div>
 
           {/* Dark / Light Mode Switcher */}
@@ -189,7 +225,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
         </div>
       </div>
 
-      <main className="max-w-md mx-auto px-4 py-4 space-y-5">
+      <main className="max-w-md mx-auto px-4 py-4 space-y-4">
         {/* Success / Error Notification */}
         {backupSuccessMessage && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 flex items-center space-x-2.5 text-emerald-800 dark:text-emerald-200 text-xs animate-fade-in">
@@ -209,7 +245,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Default Meal & Addon Prices
+              Core Meal & Addon Prices
             </h2>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               These prices apply when creating new days. Existing historical records remain frozen at their saved rates.
@@ -287,13 +323,154 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
                 type="submit"
                 className="py-2 px-4 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition"
               >
-                Update Default Prices
+                Update Core Prices
               </button>
             </div>
           </form>
         </section>
 
-        {/* Section 2: Breakfast Presets */}
+        {/* Section 2: Custom Food Options (Add New Options with Defaults) */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center space-x-2">
+            <Layers className="w-4 h-4 text-amber-500" />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Custom Hostel Options
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Add custom meals or extras (e.g. Milk, Snacks, Roti) with default prices and initial values.
+              </p>
+            </div>
+          </div>
+
+          {/* List of Custom Options */}
+          {customOptions.length > 0 ? (
+            <div className="space-y-2">
+              {customOptions.map((opt) => (
+                <div
+                  key={opt.id}
+                  className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs"
+                >
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {opt.name}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-medium uppercase">
+                        {opt.type}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Rate: <strong className="text-amber-600 dark:text-amber-400">Rs. {opt.defaultPrice}</strong> • Default:{' '}
+                      {opt.type === 'toggle'
+                        ? opt.defaultEaten
+                          ? 'Eaten (Yes)'
+                          : 'Skipped (No)'
+                        : `${opt.defaultQuantity} units`}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteCustomOption(opt.id)}
+                    className="p-1.5 text-rose-400 hover:text-rose-600 rounded-lg transition"
+                    title="Delete custom option"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 text-center py-2">
+              No custom options added yet. Create one below!
+            </p>
+          )}
+
+          {/* Add Custom Option Form */}
+          <form
+            onSubmit={handleAddCustomOption}
+            className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5"
+          >
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
+              + Add New Custom Food Option
+            </span>
+
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                placeholder="Option Name (e.g. Milk)"
+                value={newOptName}
+                onChange={(e) => setNewOptName(e.target.value)}
+                className="col-span-2 px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                required
+              />
+
+              <div>
+                <label className="text-[10px] text-slate-500 block mb-0.5">Type</label>
+                <select
+                  value={newOptType}
+                  onChange={(e) => setNewOptType(e.target.value as CustomOptionType)}
+                  className="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                  <option value="quantity">Quantity Stepper (0, 1, 2...)</option>
+                  <option value="toggle">Toggle (Eaten / Skipped)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-500 block mb-0.5">Default Price (Rs.)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Price"
+                  value={newOptPrice}
+                  onChange={(e) => setNewOptPrice(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              {newOptType === 'toggle' ? (
+                <div className="col-span-2 flex items-center space-x-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="defEaten"
+                    checked={newOptDefaultEaten}
+                    onChange={(e) => setNewOptDefaultEaten(e.target.checked)}
+                    className="rounded text-amber-500"
+                  />
+                  <label htmlFor="defEaten" className="text-xs text-slate-700 dark:text-slate-300">
+                    Default: Eaten (Yes)
+                  </label>
+                </div>
+              ) : (
+                <div className="col-span-2 flex items-center space-x-2 pt-1">
+                  <label className="text-xs text-slate-700 dark:text-slate-300">
+                    Default Quantity:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newOptDefaultQty}
+                    onChange={(e) => setNewOptDefaultQty(e.target.value)}
+                    className="w-20 px-2 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center justify-center space-x-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Option to Tracker</span>
+            </button>
+          </form>
+        </section>
+
+        {/* Section 3: Breakfast Presets */}
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -381,7 +558,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
           {/* Add Preset Form */}
           <form onSubmit={handleAddPreset} className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-              + Add New Preset
+              + Add New Breakfast Preset
             </span>
             <div className="flex items-center space-x-2">
               <input
@@ -412,7 +589,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
           </form>
         </section>
 
-        {/* Section 3: Data Backup & Restore */}
+        {/* Section 4: Data Backup & Restore */}
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -442,7 +619,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
               <span>Import JSON</span>
             </button>
 
-            {/* Hidden file input */}
             <input
               type="file"
               ref={fileInputRef}
@@ -453,7 +629,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
           </div>
         </section>
 
-        {/* Section 4: Danger Zone */}
+        {/* Section 5: Danger Zone */}
         <section className="bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 rounded-2xl p-4 shadow-xs space-y-3">
           <div className="flex items-center space-x-2 text-rose-700 dark:text-rose-400">
             <AlertOctagon className="w-4 h-4" />
@@ -472,16 +648,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
           </button>
         </section>
 
-        {/* Section 5: App Information */}
+        {/* Section 6: App Information */}
         <div className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
           <div className="flex items-center justify-center space-x-1.5">
             <Info className="w-3.5 h-3.5" />
             <span className="font-semibold text-slate-600 dark:text-slate-400">
-              Canteen Tracker PWA v1.0.0
+              WRC Hostel Canteen Tracker v1.1.0
             </span>
           </div>
           <p className="text-[11px]">
-            Designed with 💖 by Your Zara & Jagdish • 100% Offline
+            Created with 💖 for WRC Hostel by Your Zara & Jagdish • 100% Offline
           </p>
         </div>
       </main>

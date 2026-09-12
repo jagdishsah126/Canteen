@@ -1,13 +1,24 @@
-import React, { useMemo } from 'react';
-import { Sun, Moon, Drumstick, Egg } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Sun,
+  Moon,
+  Drumstick,
+  Egg,
+  Utensils,
+  Layers,
+  Check,
+  Trash2,
+  AlertCircle,
+} from 'lucide-react';
 import { useCanteenStore } from '../store/canteenStore';
 import { calculateDailyCost } from '../utils/billing';
-import { offsetISODate, getTodayISODate } from '../utils/nepaliDate';
+import { offsetISODate, getTodayISODate, isTodayISO } from '../utils/nepaliDate';
 import { DateHeader } from '../components/DateHeader';
 import { MealToggle } from '../components/MealToggle';
 import { BreakfastSelector } from '../components/BreakfastSelector';
 import { QuantityControl } from '../components/QuantityControl';
 import { DailyTotalBar } from '../components/DailyTotalBar';
+import { DailyRecord } from '../types/canteen';
 
 interface HomePageProps {
   currentDate: string;
@@ -16,7 +27,13 @@ interface HomePageProps {
 
 export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange }) => {
   const {
-    getOrCreateRecord,
+    records,
+    customOptions,
+    breakfastPresets,
+    createDefaultRecord,
+    getRecordForDate,
+    saveDayRecord,
+    unsaveDayRecord,
     toggleMorningFood,
     toggleDinner,
     toggleBreakfast,
@@ -27,95 +44,420 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
     incrementOmelette,
     decrementOmelette,
     setOmeletteQuantity,
-    breakfastPresets,
+    toggleCustomItem,
+    incrementCustomItem,
+    decrementCustomItem,
+    setCustomItemQuantity,
   } = useCanteenStore();
 
-  // Ensure record is initialized for the current selected date
-  const record = getOrCreateRecord(currentDate);
+  const isCurrentDayToday = isTodayISO(currentDate);
+
+  // Draft state for unsaved past/future days
+  const [draftRecord, setDraftRecord] = useState<DailyRecord>(() => {
+    return records[currentDate] || getRecordForDate(currentDate) || createDefaultRecord(currentDate);
+  });
+
+  // Whenever currentDate changes, synchronize draftRecord with store or fresh blank
+  useEffect(() => {
+    if (records[currentDate]) {
+      setDraftRecord(records[currentDate]);
+    } else if (isTodayISO(currentDate)) {
+      const todayRecord = getRecordForDate(currentDate);
+      if (todayRecord) setDraftRecord(todayRecord);
+    } else {
+      setDraftRecord(createDefaultRecord(currentDate));
+    }
+  }, [currentDate, records, isCurrentDayToday]);
+
+  // Is this day saved in the store?
+  const isSaved = isCurrentDayToday || Boolean(records[currentDate]?.isSaved);
+
+  // Active record to display: if saved, prefer store's record, otherwise draft
+  const activeRecord: DailyRecord = isSaved && records[currentDate] ? records[currentDate] : draftRecord;
 
   // Calculate live breakdown
-  const breakdown = useMemo(() => calculateDailyCost(record), [record]);
+  const breakdown = useMemo(() => calculateDailyCost(activeRecord), [activeRecord]);
 
-  // Date Navigation handlers
-  const handlePrevDay = () => {
-    onDateChange(offsetISODate(currentDate, -1));
+  // Action to commit/save past or future day
+  const handleSaveDay = () => {
+    saveDayRecord(draftRecord);
   };
 
-  const handleNextDay = () => {
-    onDateChange(offsetISODate(currentDate, 1));
+  const handleUnsaveDay = () => {
+    unsaveDayRecord(currentDate);
+    setDraftRecord(createDefaultRecord(currentDate));
   };
 
-  const handleToday = () => {
-    onDateChange(getTodayISODate());
+  // Helper wrappers that either update store directly (if saved or today) or update local draft
+  const handleToggleMorning = () => {
+    if (isSaved) {
+      toggleMorningFood(currentDate);
+    } else {
+      const nextEaten = !draftRecord.morningFood.eaten;
+      setDraftRecord((prev) => ({
+        ...prev,
+        morningFood: { ...prev.morningFood, eaten: nextEaten },
+      }));
+    }
+  };
+
+  const handleToggleDinner = () => {
+    if (isSaved) {
+      toggleDinner(currentDate);
+    } else {
+      const nextEaten = !draftRecord.dinner.eaten;
+      setDraftRecord((prev) => ({
+        ...prev,
+        dinner: { ...prev.dinner, eaten: nextEaten },
+      }));
+    }
+  };
+
+  const handleToggleBreakfast = () => {
+    if (isSaved) {
+      toggleBreakfast(currentDate);
+    } else {
+      const nextEaten = !draftRecord.breakfast.eaten;
+      setDraftRecord((prev) => ({
+        ...prev,
+        breakfast: {
+          ...prev.breakfast,
+          eaten: nextEaten,
+          isIncomplete: nextEaten ? (!prev.breakfast.item || prev.breakfast.price <= 0) : false,
+        },
+      }));
+    }
+  };
+
+  const handleSetBreakfast = (item: string, price: number) => {
+    if (isSaved) {
+      setBreakfast(currentDate, item, price);
+    } else {
+      setDraftRecord((prev) => ({
+        ...prev,
+        breakfast: {
+          eaten: true,
+          item,
+          price,
+          isIncomplete: !item || price <= 0,
+        },
+      }));
+    }
+  };
+
+  const handleIncrementMasu = () => {
+    if (isSaved) {
+      incrementMasu(currentDate);
+    } else {
+      setDraftRecord((prev) => ({
+        ...prev,
+        masu: { ...prev.masu, quantity: prev.masu.quantity + 1 },
+      }));
+    }
+  };
+
+  const handleDecrementMasu = () => {
+    if (isSaved) {
+      decrementMasu(currentDate);
+    } else {
+      setDraftRecord((prev) => ({
+        ...prev,
+        masu: { ...prev.masu, quantity: Math.max(0, prev.masu.quantity - 1) },
+      }));
+    }
+  };
+
+  const handleSetMasuQuantity = (qty: number) => {
+    if (isSaved) {
+      setMasuQuantity(currentDate, qty);
+    } else {
+      setDraftRecord((prev) => ({
+        ...prev,
+        masu: { ...prev.masu, quantity: Math.max(0, qty) },
+      }));
+    }
+  };
+
+  const handleIncrementOmelette = () => {
+    if (isSaved) {
+      incrementOmelette(currentDate);
+    } else {
+      setDraftRecord((prev) => ({
+        ...prev,
+        omelette: { ...prev.omelette, quantity: prev.omelette.quantity + 1 },
+      }));
+    }
+  };
+
+  const handleDecrementOmelette = () => {
+    if (isSaved) {
+      decrementOmelette(currentDate);
+    } else {
+      setDraftRecord((prev) => ({
+        ...prev,
+        omelette: { ...prev.omelette, quantity: Math.max(0, prev.omelette.quantity - 1) },
+      }));
+    }
+  };
+
+  const handleSetOmeletteQuantity = (qty: number) => {
+    if (isSaved) {
+      setOmeletteQuantity(currentDate, qty);
+    } else {
+      setDraftRecord((prev) => ({
+        ...prev,
+        omelette: { ...prev.omelette, quantity: Math.max(0, qty) },
+      }));
+    }
+  };
+
+  // Custom Items Handlers
+  const handleToggleCustom = (optId: string) => {
+    if (isSaved) {
+      toggleCustomItem(currentDate, optId);
+    } else {
+      const opt = customOptions.find((o) => o.id === optId);
+      const currentVal = draftRecord.customItems?.[optId] || {
+        id: optId,
+        name: opt?.name || 'Custom Item',
+        type: 'toggle' as const,
+        price: opt?.defaultPrice || 0,
+        eaten: false,
+      };
+      setDraftRecord((prev) => ({
+        ...prev,
+        customItems: {
+          ...(prev.customItems || {}),
+          [optId]: {
+            ...currentVal,
+            eaten: !currentVal.eaten,
+            price: currentVal.price || opt?.defaultPrice || 0,
+          },
+        },
+      }));
+    }
+  };
+
+  const handleIncrementCustom = (optId: string) => {
+    if (isSaved) {
+      incrementCustomItem(currentDate, optId);
+    } else {
+      const opt = customOptions.find((o) => o.id === optId);
+      const currentVal = draftRecord.customItems?.[optId] || {
+        id: optId,
+        name: opt?.name || 'Custom Item',
+        type: 'quantity' as const,
+        price: opt?.defaultPrice || 0,
+        quantity: 0,
+      };
+      setDraftRecord((prev) => ({
+        ...prev,
+        customItems: {
+          ...(prev.customItems || {}),
+          [optId]: {
+            ...currentVal,
+            quantity: (currentVal.quantity || 0) + 1,
+            price: currentVal.price || opt?.defaultPrice || 0,
+          },
+        },
+      }));
+    }
+  };
+
+  const handleDecrementCustom = (optId: string) => {
+    if (isSaved) {
+      decrementCustomItem(currentDate, optId);
+    } else {
+      const currentVal = draftRecord.customItems?.[optId];
+      if (!currentVal || (currentVal.quantity || 0) <= 0) return;
+      setDraftRecord((prev) => ({
+        ...prev,
+        customItems: {
+          ...(prev.customItems || {}),
+          [optId]: {
+            ...currentVal,
+            quantity: Math.max(0, (currentVal.quantity || 0) - 1),
+          },
+        },
+      }));
+    }
+  };
+
+  const handleSetCustomQuantity = (optId: string, qty: number) => {
+    if (isSaved) {
+      setCustomItemQuantity(currentDate, optId, qty);
+    } else {
+      const opt = customOptions.find((o) => o.id === optId);
+      const currentVal = draftRecord.customItems?.[optId] || {
+        id: optId,
+        name: opt?.name || 'Custom Item',
+        type: 'quantity' as const,
+        price: opt?.defaultPrice || 0,
+        quantity: 0,
+      };
+      setDraftRecord((prev) => ({
+        ...prev,
+        customItems: {
+          ...(prev.customItems || {}),
+          [optId]: {
+            ...currentVal,
+            quantity: Math.max(0, Math.floor(qty)),
+            price: currentVal.price || opt?.defaultPrice || 0,
+          },
+        },
+      }));
+    }
   };
 
   return (
-    <div className="min-h-screen pb-32">
-      {/* Bikram Sambat Date Header */}
+    <div className="min-h-screen pb-36">
+      {/* Date Header with Save / Tick status */}
       <DateHeader
         currentDate={currentDate}
-        onPrevDay={handlePrevDay}
-        onNextDay={handleNextDay}
-        onToday={handleToday}
+        isSaved={isSaved}
+        onPrevDay={() => onDateChange(offsetISODate(currentDate, -1))}
+        onNextDay={() => onDateChange(offsetISODate(currentDate, 1))}
+        onToday={() => onDateChange(getTodayISODate())}
+        onSaveDay={handleSaveDay}
       />
 
+      {/* Draft Unsaved Notice for Past/Future Dates */}
+      {!isSaved && (
+        <div className="max-w-md mx-auto px-4 pt-3">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between text-amber-900 dark:text-amber-200 text-xs">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>
+                <strong>Unsaved day:</strong> Viewing or editing does not save until you click the tick button.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveDay}
+              className="ml-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold rounded-xl shadow-xs transition flex items-center space-x-1 shrink-0"
+            >
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+              <span>Save (Tick)</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Feed */}
-      <main className="max-w-md mx-auto px-4 py-4 space-y-3.5">
-        {/* Morning Food */}
+      <main className="max-w-md mx-auto px-4 py-3.5 space-y-3.5">
+        {/* Core Option 1: Morning Food */}
         <MealToggle
           label="Morning Food"
           sublabel="Main meal (Lunch)"
           icon={<Sun className="w-5 h-5" />}
-          eaten={record.morningFood.eaten}
-          price={record.morningFood.price}
-          onToggle={() => toggleMorningFood(currentDate)}
+          eaten={activeRecord.morningFood.eaten}
+          price={activeRecord.morningFood.price}
+          onToggle={handleToggleMorning}
         />
 
-        {/* Breakfast with Presets & Warning */}
+        {/* Core Option 2: Breakfast */}
         <BreakfastSelector
-          breakfast={record.breakfast}
+          breakfast={activeRecord.breakfast}
           presets={breakfastPresets}
-          onToggleEaten={() => toggleBreakfast(currentDate)}
-          onSelectPreset={(preset) => setBreakfast(currentDate, preset.label, preset.price)}
-          onSetCustom={(item, price) => setBreakfast(currentDate, item, price)}
+          onToggleEaten={handleToggleBreakfast}
+          onSelectPreset={(preset) => handleSetBreakfast(preset.label, preset.price)}
+          onSetCustom={(item, price) => handleSetBreakfast(item, price)}
         />
 
-        {/* Dinner */}
+        {/* Core Option 3: Dinner */}
         <MealToggle
           label="Dinner"
           sublabel="Night meal"
           icon={<Moon className="w-5 h-5" />}
-          eaten={record.dinner.eaten}
-          price={record.dinner.price}
-          onToggle={() => toggleDinner(currentDate)}
+          eaten={activeRecord.dinner.eaten}
+          price={activeRecord.dinner.price}
+          onToggle={handleToggleDinner}
         />
 
-        {/* Optional Extra 1: Masu */}
+        {/* Core Option 4 & 5: Masu & Omelette */}
         <QuantityControl
           label="Masu"
           sublabel="Non-veg addon"
           icon={<Drumstick className="w-5 h-5" />}
-          quantity={record.masu.quantity}
-          unitPrice={record.masu.unitPrice}
-          onIncrement={() => incrementMasu(currentDate)}
-          onDecrement={() => decrementMasu(currentDate)}
-          onSetQuantity={(qty) => setMasuQuantity(currentDate, qty)}
+          quantity={activeRecord.masu.quantity}
+          unitPrice={activeRecord.masu.unitPrice}
+          onIncrement={handleIncrementMasu}
+          onDecrement={handleDecrementMasu}
+          onSetQuantity={handleSetMasuQuantity}
         />
 
-        {/* Optional Extra 2: Omelette */}
         <QuantityControl
           label="Omelette"
           sublabel="Egg addon"
           icon={<Egg className="w-5 h-5" />}
-          quantity={record.omelette.quantity}
-          unitPrice={record.omelette.unitPrice}
-          onIncrement={() => incrementOmelette(currentDate)}
-          onDecrement={() => decrementOmelette(currentDate)}
-          onSetQuantity={(qty) => setOmeletteQuantity(currentDate, qty)}
+          quantity={activeRecord.omelette.quantity}
+          unitPrice={activeRecord.omelette.unitPrice}
+          onIncrement={handleIncrementOmelette}
+          onDecrement={handleDecrementOmelette}
+          onSetQuantity={handleSetOmeletteQuantity}
         />
+
+        {/* Dynamic Custom Options (Created by User in Settings) */}
+        {customOptions.length > 0 && (
+          <div className="pt-2 space-y-3">
+            <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
+              <Layers className="w-3.5 h-3.5 text-amber-500" />
+              <span>Custom Hostel Options</span>
+            </div>
+
+            {customOptions.map((opt) => {
+              const currentVal = activeRecord.customItems?.[opt.id];
+              const price = currentVal?.price || opt.defaultPrice;
+
+              if (opt.type === 'toggle') {
+                const isEaten = currentVal ? Boolean(currentVal.eaten) : opt.defaultEaten;
+                return (
+                  <MealToggle
+                    key={opt.id}
+                    label={opt.name}
+                    sublabel="Custom food option"
+                    icon={<Utensils className="w-5 h-5" />}
+                    eaten={isEaten}
+                    price={price}
+                    onToggle={() => handleToggleCustom(opt.id)}
+                  />
+                );
+              }
+
+              const qty = currentVal ? (currentVal.quantity || 0) : opt.defaultQuantity;
+              return (
+                <QuantityControl
+                  key={opt.id}
+                  label={opt.name}
+                  sublabel="Custom extra"
+                  icon={<Utensils className="w-5 h-5" />}
+                  quantity={qty}
+                  unitPrice={price}
+                  onIncrement={() => handleIncrementCustom(opt.id)}
+                  onDecrement={() => handleDecrementCustom(opt.id)}
+                  onSetQuantity={(val) => handleSetCustomQuantity(opt.id, val)}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {/* Saved Day Management Options (for non-today saved records) */}
+        {!isCurrentDayToday && isSaved && (
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={handleUnsaveDay}
+              className="text-xs text-rose-500 hover:text-rose-600 flex items-center space-x-1 px-2 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Remove this day from bill</span>
+            </button>
+          </div>
+        )}
       </main>
 
-      {/* Sticky Daily Total */}
+      {/* Sticky Daily Total Bar */}
       <DailyTotalBar breakdown={breakdown} />
     </div>
   );
