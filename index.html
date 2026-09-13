@@ -1,470 +1,284 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aider CLI — Interactive Command Guide & Studio</title>
-  <meta name="description" content="Comprehensive interactive reference, terminal simulator, and command builder for Aider AI pair programming CLI." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body class="dark-theme">
-  <!-- Top Navigation & Header -->
-  <header class="app-header">
-    <div class="header-container">
-      <div class="brand">
-        <div class="brand-icon">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="4 17 10 11 4 5"></polyline>
-            <line x1="12" y1="19" x2="20" y2="19"></line>
-          </svg>
-        </div>
-        <div>
-          <div class="brand-title">
-            <h1>aider</h1>
-            <span class="badge">v0.70+ Guide</span>
-          </div>
-          <p class="brand-subtitle">AI pair programming in your terminal</p>
-        </div>
-      </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#1a2f23" />
+    <meta name="description" content="Track canteen meals and monthly bills offline." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Canteen" />
+    <title>Canteen Tracker</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <p class="brand">Canteen Tracker</p>
+        <p class="brand-sub" id="storage-status">Loading…</p>
+      </header>
 
-      <div class="header-actions">
-        <div class="global-search-wrapper">
-          <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="global-search" placeholder="Search commands, flags, keywords... (Press '/' to focus)" autocomplete="off" />
-          <kbd class="shortcut-key">/</kbd>
-        </div>
-        <button id="theme-toggle" class="btn-icon" title="Toggle Theme" aria-label="Toggle Theme">
-          <svg id="theme-icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Navigation Tabs -->
-    <nav class="nav-tabs-container">
-      <div class="nav-tabs" role="tablist">
-        <button class="nav-tab active" data-tab="in-chat" role="tab" aria-selected="true">
-          <span class="tab-icon">/</span> In-Chat Commands
-        </button>
-        <button class="nav-tab" data-tab="cli-flags" role="tab" aria-selected="false">
-          <span class="tab-icon">$</span> CLI Flags & Options
-        </button>
-        <button class="nav-tab" data-tab="builder" role="tab" aria-selected="false">
-          <span class="tab-icon">⚡</span> Command Generator
-        </button>
-        <button class="nav-tab" data-tab="simulator" role="tab" aria-selected="false">
-          <span class="tab-icon">&gt;_</span> Interactive Sandbox
-        </button>
-        <button class="nav-tab" data-tab="cheatsheet" role="tab" aria-selected="false">
-          <span class="tab-icon">📋</span> Workflows & Tips
-        </button>
-      </div>
-    </nav>
-  </header>
-
-  <!-- Main Content Area -->
-  <main class="main-content">
-    
-    <!-- Tab 1: In-Chat Commands -->
-    <section id="tab-in-chat" class="tab-pane active" role="tabpanel">
-      <div class="pane-header">
-        <div class="pane-info">
-          <h2>In-Chat Slash Commands</h2>
-          <p>Commands typed directly inside the active Aider chat session.</p>
-        </div>
-        <div class="filter-pills" id="in-chat-filters">
-          <button class="pill active" data-filter="all">All (<span id="count-chat-all">0</span>)</button>
-          <button class="pill" data-filter="files">Files & Context</button>
-          <button class="pill" data-filter="git">Git & History</button>
-          <button class="pill" data-filter="model">Models & Modes</button>
-          <button class="pill" data-filter="session">Session & Config</button>
-        </div>
-      </div>
-
-      <div class="cards-grid" id="in-chat-grid">
-        <!-- In-Chat Command cards injected by JS -->
-      </div>
-    </section>
-
-    <!-- Tab 2: CLI Startup Flags -->
-    <section id="tab-cli-flags" class="tab-pane" role="tabpanel">
-      <div class="pane-header">
-        <div class="pane-info">
-          <h2>CLI Startup Arguments & Flags</h2>
-          <p>Flags passed when starting Aider from your shell (e.g. <code>aider --model sonnet</code>).</p>
-        </div>
-        <div class="filter-pills" id="cli-filters">
-          <button class="pill active" data-filter="all">All (<span id="count-cli-all">0</span>)</button>
-          <button class="pill" data-filter="model">Models</button>
-          <button class="pill" data-filter="git">Git & Commits</button>
-          <button class="pill" data-filter="files">Files & Repos</button>
-          <button class="pill" data-filter="appearance">UI & Output</button>
-          <button class="pill" data-filter="advanced">Advanced</button>
-        </div>
-      </div>
-
-      <div class="cards-grid" id="cli-flags-grid">
-        <!-- CLI Flag cards injected by JS -->
-      </div>
-    </section>
-
-    <!-- Tab 3: Interactive Command Builder -->
-    <section id="tab-builder" class="tab-pane" role="tabpanel">
-      <div class="builder-layout">
-        <div class="builder-form-card">
-          <div class="card-header">
-            <h2>Aider Startup Command Builder</h2>
-            <p>Customize your options and generate the exact shell command to launch Aider.</p>
-          </div>
-
-          <form id="builder-form" class="builder-form">
-            <!-- Model Selection -->
-            <div class="form-group">
-              <label for="builder-model">AI Model (<code>--model</code>)</label>
-              <select id="builder-model" name="model" class="form-control">
-                <option value="claude-3-7-sonnet" selected>Claude 3.7 Sonnet (Recommended)</option>
-                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                <option value="gpt-4o">OpenAI GPT-4o</option>
-                <option value="o1">OpenAI o1</option>
-                <option value="o3-mini">OpenAI o3-mini</option>
-                <option value="deepseek/deepseek-chat">DeepSeek V3 (deepseek/deepseek-chat)</option>
-                <option value="deepseek/deepseek-reasoner">DeepSeek R1 (deepseek/deepseek-reasoner)</option>
-                <option value="gemini/gemini-2.0-flash">Gemini 2.0 Flash</option>
-                <option value="ollama/qwen2.5-coder:32b">Local: Ollama Qwen 2.5 Coder 32B</option>
-                <option value="custom">Custom Model Specifier...</option>
-              </select>
-            </div>
-
-            <div class="form-group" id="custom-model-group" style="display: none;">
-              <label for="builder-custom-model">Custom Model Name</label>
-              <input type="text" id="builder-custom-model" class="form-control" placeholder="e.g. openrouter/anthropic/claude-3.5-sonnet" />
-            </div>
-
-            <!-- Edit Format -->
-            <div class="form-group">
-              <label for="builder-edit-format">Edit Format (<code>--edit-format</code>)</label>
-              <select id="builder-edit-format" name="editFormat" class="form-control">
-                <option value="default" selected>Default (Optimized for chosen model)</option>
-                <option value="diff">diff (Search/Replace blocks)</option>
-                <option value="whole">whole (Entire file replacement)</option>
-                <option value="udiff">udiff (Unified diff)</option>
-                <option value="architect">architect (Separate thinking & editing)</option>
-              </select>
-            </div>
-
-            <!-- Target Files -->
-            <div class="form-group">
-              <label for="builder-files">Files to Edit initially</label>
-              <input type="text" id="builder-files" class="form-control" placeholder="app.js style.css src/index.ts" />
-              <small>Space-separated file paths or globs.</small>
-            </div>
-
-            <!-- Read Only Files -->
-            <div class="form-group">
-              <label for="builder-read-files">Read-Only Reference Files (<code>--read</code>)</label>
-              <input type="text" id="builder-read-files" class="form-control" placeholder="docs/api.md schema.sql" />
-            </div>
-
-            <!-- Toggles & Flags Grid -->
-            <div class="form-group">
-              <label>Flags & Behaviors</label>
-              <div class="checkbox-grid">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flag-auto-commits" checked />
-                  <span><code>--auto-commits</code> (Git commit changes automatically)</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flag-dark-mode" checked />
-                  <span><code>--dark-mode</code> (Terminal UI dark theme)</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flag-stream" checked />
-                  <span><code>--stream</code> (Stream responses live)</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flag-analytics" />
-                  <span><code>--no-analytics</code> (Disable telemetry)</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flag-watch-prompts" />
-                  <span><code>--watch-prompts</code> (Run prompt file on save)</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flag-voice" />
-                  <span><code>--voice</code> (Voice coding mode)</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flag-browser" />
-                  <span><code>--browser</code> (Launch web GUI mode)</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flag-lint" />
-                  <span><code>--auto-lint</code> (Auto-fix lint errors)</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- Custom Env/API Key Preset -->
-            <div class="form-group">
-              <label for="builder-api-key-env">Environment Variable Prefix</label>
-              <select id="builder-api-key-env" class="form-control">
-                <option value="none" selected>None (Already in .env or shell environment)</option>
-                <option value="ANTHROPIC_API_KEY">ANTHROPIC_API_KEY=your_key</option>
-                <option value="OPENAI_API_KEY">OPENAI_API_KEY=your_key</option>
-                <option value="DEEPSEEK_API_KEY">DEEPSEEK_API_KEY=your_key</option>
-                <option value="OPENROUTER_API_KEY">OPENROUTER_API_KEY=your_key</option>
-              </select>
-            </div>
-          </form>
-        </div>
-
-        <!-- Generated Output Box -->
-        <div class="builder-preview-card">
-          <div class="card-header">
-            <h3>Generated Command</h3>
-            <span class="badge badge-success">Ready to run</span>
-          </div>
-
-          <div class="terminal-block">
-            <div class="terminal-header">
-              <span class="dot red"></span>
-              <span class="dot yellow"></span>
-              <span class="dot green"></span>
-              <span class="terminal-title">bash / zsh</span>
-            </div>
-            <pre class="terminal-code"><code id="builder-output">aider</code></pre>
-          </div>
-
-          <div class="preview-actions">
-            <button class="btn btn-primary" id="btn-copy-builder">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              Copy Command
+      <main class="app-main">
+        <section id="home" class="screen is-active" aria-label="Today">
+          <div class="month-nav" role="group" aria-label="Month navigation">
+            <button type="button" class="date-nav-btn" id="btn-prev-month" aria-label="Previous month">
+              ←
             </button>
-            <button class="btn btn-secondary" id="btn-test-sandbox">
-              Launch in Sandbox &gt;_
+            <p class="month-nav-label" id="home-month-label">—</p>
+            <button type="button" class="date-nav-btn" id="btn-next-month" aria-label="Next month">
+              →
             </button>
           </div>
 
-          <div class="builder-tips">
-            <h4>💡 Setup Tip</h4>
-            <p id="builder-tip-text">
-              Store frequently used flags in a <code>.aider.conf.yml</code> file in your repo root or home directory to avoid re-typing them!
+          <div class="date-nav" role="group" aria-label="Day navigation">
+            <button type="button" class="date-nav-btn" id="btn-prev-day">
+              ← Prev
+            </button>
+            <button type="button" class="date-nav-btn date-nav-today" id="btn-today">
+              Today
+            </button>
+            <button type="button" class="date-nav-btn" id="btn-next-day">
+              Next →
+            </button>
+          </div>
+
+          <div class="screen-intro">
+            <p class="today-chip" id="home-today-chip" hidden>Today</p>
+            <h1 class="screen-title" id="home-date-title">—</h1>
+            <p class="screen-copy" id="home-date-sub">—</p>
+          </div>
+
+          <div class="meal-list" id="meal-list"></div>
+
+          <div class="sticky-total" aria-live="polite">
+            <span class="sticky-total-label">Day total</span>
+            <span class="sticky-total-value" id="home-total">Rs. 0</span>
+          </div>
+          <p class="sr-only" id="home-status-live" aria-live="polite"></p>
+        </section>
+
+        <section id="monthly" class="screen" aria-label="Monthly summary" hidden>
+          <div class="month-nav" role="group" aria-label="Bill month navigation">
+            <button type="button" class="date-nav-btn" id="btn-monthly-prev" aria-label="Previous month">
+              ←
+            </button>
+            <p class="month-nav-label" id="monthly-month-label">—</p>
+            <button type="button" class="date-nav-btn" id="btn-monthly-next" aria-label="Next month">
+              →
+            </button>
+          </div>
+
+          <div class="screen-intro">
+            <h1 class="screen-title">Monthly bill</h1>
+            <p class="screen-copy" id="monthly-summary-copy">
+              Totals from recorded days in this Nepali month.
             </p>
           </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- Tab 4: Interactive Terminal Sandbox -->
-    <section id="tab-simulator" class="tab-pane" role="tabpanel">
-      <div class="simulator-layout">
-        <div class="simulator-panel">
-          <div class="terminal-window">
-            <div class="terminal-topbar">
-              <div class="window-controls">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
-              </div>
-              <span class="terminal-session-title">aider v0.70.0 — Claude 3.7 Sonnet (diff mode)</span>
-              <div class="terminal-actions">
-                <button class="btn-terminal-action" id="sim-clear" title="Clear terminal">Clear</button>
-                <button class="btn-terminal-action" id="sim-reset" title="Reset session">Reset</button>
-              </div>
-            </div>
+          <p class="meal-warning" id="monthly-warning" hidden role="status" aria-live="polite"></p>
 
-            <div class="terminal-screen" id="sim-screen">
-              <!-- Simulated terminal messages injected dynamically -->
-            </div>
+          <div class="panel monthly-total-panel">
+            <p class="panel-label">Expected total</p>
+            <p class="panel-value panel-value-lg" id="monthly-total">Rs. 0</p>
+            <p class="panel-note" id="monthly-recorded">0 days recorded</p>
+          </div>
 
-            <div class="terminal-input-bar">
-              <span class="terminal-prompt">&gt;</span>
-              <input type="text" id="sim-input" placeholder="Type a slash command (e.g. /add, /tokens, /model, /help) or prompt..." autocomplete="off" />
-              <button id="sim-submit" class="btn-send" title="Send (Enter)">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
+          <div class="breakdown-list" id="monthly-breakdown"></div>
+
+          <div class="panel">
+            <p class="panel-label">Daily breakdown</p>
+            <div class="day-list" id="monthly-day-list"></div>
+            <p class="panel-note" id="monthly-empty-note" hidden>
+              No days recorded in this month yet. Open days from Today to start tracking.
+            </p>
+          </div>
+
+          <div class="panel">
+            <p class="panel-label">Month closing</p>
+            <p class="panel-note" id="monthly-snapshot-note">
+              Save a snapshot of this month's bill without locking edits.
+            </p>
+            <button type="button" class="btn btn-secondary" id="btn-close-month">
+              Close month
+            </button>
+          </div>
+        </section>
+
+        <section id="settings" class="screen" aria-label="Settings" hidden>
+          <div class="screen-intro">
+            <h1 class="screen-title">Settings</h1>
+            <p class="screen-copy">
+              Add, edit, or remove meals. Defaults apply to new days only — old
+              days keep their saved prices.
+            </p>
+          </div>
+
+          <div class="panel">
+            <p class="panel-label">Toggle meals</p>
+            <p class="panel-note">
+              Like Morning Food and Dinner. Checkbox meals with a fixed price.
+            </p>
+            <div id="settings-toggle-list"></div>
+            <div class="settings-add-block">
+              <label class="field">
+                <span class="field-label">Name</span>
+                <input type="text" class="field-input" id="input-new-toggle-label" placeholder="e.g. Snacks" />
+              </label>
+              <label class="field">
+                <span class="field-label">Price (Rs.)</span>
+                <input type="number" class="field-input" id="input-new-toggle-price" min="0" step="1" placeholder="0" />
+              </label>
+              <label class="check-inline">
+                <input type="checkbox" id="input-new-toggle-default" checked />
+                <span>Default eaten</span>
+              </label>
+              <button type="button" class="btn btn-secondary btn-compact" id="btn-add-toggle">
+                + Add toggle meal
               </button>
             </div>
+            <p class="panel-note" id="settings-toggle-note"></p>
           </div>
-        </div>
 
-        <!-- Simulator Helper / Quick Palette -->
-        <aside class="simulator-sidebar">
-          <div class="sidebar-block">
-            <h3>Interactive Tryouts</h3>
-            <p>Click any example to quickly execute it in the simulated Aider shell:</p>
-            <div class="quick-command-list" id="quick-sim-buttons">
-              <button class="quick-cmd-btn" data-cmd="/add index.html style.css"><code>/add index.html style.css</code> — Add files</button>
-              <button class="quick-cmd-btn" data-cmd="/tokens"><code>/tokens</code> — View token budget</button>
-              <button class="quick-cmd-btn" data-cmd="/model sonnet"><code>/model sonnet</code> — Switch model</button>
-              <button class="quick-cmd-btn" data-cmd="/web https://aider.chat"><code>/web &lt;url&gt;</code> — Scrape & reference</button>
-              <button class="quick-cmd-btn" data-cmd="/diff"><code>/diff</code> — Inspect git diff</button>
-              <button class="quick-cmd-btn" data-cmd="/undo"><code>/undo</code> — Revert last AI commit</button>
-              <button class="quick-cmd-btn" data-cmd="/test npm test"><code>/test npm test</code> — Run tests & fix</button>
-              <button class="quick-cmd-btn" data-cmd="/help"><code>/help</code> — Show built-in help</button>
+          <div class="panel">
+            <p class="panel-label">Preset meals</p>
+            <p class="panel-note">
+              Like Breakfast. Choose from presets or custom item/price. Set default eaten and optional default item.
+            </p>
+            <div id="settings-preset-meal-list"></div>
+            <div class="settings-add-block">
+              <label class="field">
+                <span class="field-label">Name</span>
+                <input type="text" class="field-input" id="input-new-presetmeal-label" placeholder="e.g. Evening snack" />
+              </label>
+              <label class="check-inline">
+                <input type="checkbox" id="input-new-presetmeal-default" checked />
+                <span>Default eaten</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Default item (optional)</span>
+                <input type="text" class="field-input" id="input-new-presetmeal-item" placeholder="e.g. Tea" />
+              </label>
+              <label class="field">
+                <span class="field-label">Default price (optional)</span>
+                <input type="number" class="field-input" id="input-new-presetmeal-price" min="0" step="1" placeholder="0" />
+              </label>
+              <button type="button" class="btn btn-secondary btn-compact" id="btn-add-presetmeal">
+                + Add preset meal
+              </button>
             </div>
+            <p class="panel-note" id="settings-presetmeal-note"></p>
           </div>
 
-          <div class="sidebar-block">
-            <h3>Simulated Repo Status</h3>
-            <div class="repo-status-card">
-              <div class="status-row">
-                <span class="status-label">Active Model:</span>
-                <span class="status-val" id="sim-stat-model">claude-3-7-sonnet</span>
-              </div>
-              <div class="status-row">
-                <span class="status-label">Chat Files:</span>
-                <span class="status-val" id="sim-stat-files">index.html, style.css</span>
-              </div>
-              <div class="status-row">
-                <span class="status-label">Read-Only Files:</span>
-                <span class="status-val" id="sim-stat-read">README.md</span>
-              </div>
-              <div class="status-row">
-                <span class="status-label">Tokens in Map:</span>
-                <span class="status-val" id="sim-stat-tokens">1,024 / 200k</span>
-              </div>
+          <div class="panel">
+            <p class="panel-label">Quantity items</p>
+            <p class="panel-note">Like Masu and Omelette — counted with − / +.</p>
+            <div id="settings-qty-list"></div>
+            <div class="settings-add-block">
+              <label class="field">
+                <span class="field-label">Name</span>
+                <input type="text" class="field-input" id="input-new-qty-label" placeholder="e.g. Extra roti" />
+              </label>
+              <label class="field">
+                <span class="field-label">Price per piece (Rs.)</span>
+                <input type="number" class="field-input" id="input-new-qty-price" min="0" step="1" placeholder="0" />
+              </label>
+              <label class="field">
+                <span class="field-label">Default quantity</span>
+                <input type="number" class="field-input" id="input-new-qty-default" min="0" step="1" value="0" />
+              </label>
+              <button type="button" class="btn btn-secondary btn-compact" id="btn-add-qty">
+                + Add quantity item
+              </button>
             </div>
+            <p class="panel-note" id="settings-qty-note"></p>
           </div>
-        </aside>
-      </div>
-    </section>
 
-    <!-- Tab 5: Workflows & Cheat Sheet -->
-    <section id="tab-cheatsheet" class="tab-pane" role="tabpanel">
-      <div class="cheatsheet-grid">
-        <!-- Card 1 -->
-        <article class="guide-card">
-          <div class="guide-card-header">
-            <span class="step-num">01</span>
-            <h3>The Golden Workflow</h3>
+          <div class="panel">
+            <p class="panel-label">Data backup</p>
+            <p class="panel-note">
+              Export a JSON backup of settings, records, presets, and snapshots.
+              Import replaces all local data after confirmation.
+            </p>
+            <button type="button" class="btn btn-secondary" id="btn-export-backup">
+              Export backup
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-import-backup">
+              Import backup
+            </button>
+            <input
+              type="file"
+              id="input-import-backup"
+              accept="application/json,.json"
+              hidden
+            />
+            <p class="panel-note" id="settings-backup-note"></p>
           </div>
-          <div class="guide-card-body">
-            <ol class="workflow-steps">
-              <li><strong>Add only what you are editing:</strong> Use <code>/add file.js</code> for files the LLM must edit.</li>
-              <li><strong>Add background as read-only:</strong> Use <code>/read doc.md</code> so the LLM has context without wasting tokens or editing by mistake.</li>
-              <li><strong>Ask concise instructions:</strong> <em>"Add user avatar to navbar with fallback initials"</em></li>
-              <li><strong>Review git commits:</strong> Aider automatically commits each change with sensible commit messages.</li>
-              <li><strong>Undo if unhappy:</strong> Use <code>/undo</code> to cleanly roll back code and context.</li>
-            </ol>
-          </div>
-        </article>
 
-        <!-- Card 2 -->
-        <article class="guide-card">
-          <div class="guide-card-header">
-            <span class="step-num">02</span>
-            <h3>Architect Mode Pattern</h3>
+          <div class="panel panel-danger">
+            <p class="panel-label">Danger zone</p>
+            <p class="panel-note">
+              Permanently remove all local canteen records from this browser.
+              This cannot be undone unless you have a backup.
+            </p>
+            <button type="button" class="btn btn-secondary btn-danger-soft" id="btn-clear-all">
+              Delete all local data
+            </button>
+            <p class="panel-note" id="settings-clear-note"></p>
           </div>
-          <div class="guide-card-body">
-            <p>Combine a superior reasoning model with a fast editing model for complex refactoring:</p>
-            <div class="code-snippet">
-              <pre><code>aider --model o3-mini --editor-model claude-3-7-sonnet</code></pre>
-              <button class="btn-copy-mini" data-copy="aider --model o3-mini --editor-model claude-3-7-sonnet">Copy</button>
-            </div>
-            <ul class="bullet-list">
-              <li><strong>Architect:</strong> Solves reasoning, designs architecture, writes execution plan.</li>
-              <li><strong>Editor:</strong> Executes code replacement blocks accurately.</li>
-            </ul>
+
+          <div class="panel">
+            <p class="panel-label">Schema version</p>
+            <p class="panel-value" id="settings-schema">—</p>
+            <p class="panel-label">Presets loaded</p>
+            <p class="panel-value" id="settings-presets">—</p>
+            <p class="panel-label">Records saved</p>
+            <p class="panel-value" id="settings-record-count">—</p>
+            <p class="panel-label">Install / offline</p>
+            <p class="panel-note" id="settings-offline-note">
+              Open this app over http://localhost (or HTTPS), then use your
+              browser's Install / Add to Home Screen. After the first load it
+              works without internet.
+            </p>
           </div>
-        </article>
+        </section>
+      </main>
 
-        <!-- Card 3 -->
-        <article class="guide-card">
-          <div class="guide-card-header">
-            <span class="step-num">03</span>
-            <h3>Automated Test-Driven Repair</h3>
-          </div>
-          <div class="guide-card-body">
-            <p>Run tests or linters and let Aider automatically fix failures until everything passes:</p>
-            <div class="code-snippet">
-              <pre><code>aider --test-cmd "pytest tests/" --auto-test</code></pre>
-              <button class="btn-copy-mini" data-copy="aider --test-cmd &quot;pytest tests/&quot; --auto-test">Copy</button>
-            </div>
-            <p class="sub-note">Inside the chat, you can also run one-off test cycles with <code>/test &lt;command&gt;</code>.</p>
-          </div>
-        </article>
-
-        <!-- Card 4 -->
-        <article class="guide-card">
-          <div class="guide-card-header">
-            <span class="step-num">04</span>
-            <h3>Repository Map Optimization</h3>
-          </div>
-          <div class="guide-card-body">
-            <p>Aider creates a tree-sitter map of your entire codebase to know where functions and symbols live.</p>
-            <div class="code-snippet">
-              <pre><code>aider --map-tokens 2048 --map-refresh auto</code></pre>
-              <button class="btn-copy-mini" data-copy="aider --map-tokens 2048 --map-refresh auto">Copy</button>
-            </div>
-            <ul class="bullet-list">
-              <li><code>--map-tokens 0</code>: Disables repo map (saves tokens on tiny projects).</li>
-              <li><code>--map-tokens 4096</code>: Deep structural visibility on huge enterprise repos.</li>
-            </ul>
-          </div>
-        </article>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Command Detail Modal -->
-  <div id="command-modal" class="modal-backdrop" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div class="modal-title-wrap">
-          <code id="modal-cmd-name" class="modal-code">/add</code>
-          <span id="modal-cmd-type" class="badge">In-Chat Command</span>
-        </div>
-        <button id="modal-close" class="btn-icon" aria-label="Close dialog">✕</button>
-      </div>
-      <div class="modal-body">
-        <p id="modal-cmd-desc" class="modal-desc"></p>
-
-        <div class="modal-section">
-          <h4>Syntax & Usage</h4>
-          <div class="code-snippet">
-            <pre><code id="modal-cmd-syntax"></code></pre>
-            <button class="btn-copy-mini" id="modal-copy-syntax">Copy</button>
-          </div>
-        </div>
-
-        <div class="modal-section" id="modal-alias-section">
-          <h4>Aliases & Shortcuts</h4>
-          <div id="modal-cmd-aliases" class="tag-list"></div>
-        </div>
-
-        <div class="modal-section">
-          <h4>Examples</h4>
-          <div id="modal-cmd-examples" class="examples-list"></div>
-        </div>
-      </div>
+      <nav class="bottom-nav" aria-label="Primary">
+        <button
+          type="button"
+          class="nav-btn is-active"
+          data-screen="home"
+          aria-current="page"
+        >
+          <span class="nav-btn-label">Today</span>
+        </button>
+        <button type="button" class="nav-btn" data-screen="monthly">
+          <span class="nav-btn-label">Monthly</span>
+        </button>
+        <button type="button" class="nav-btn" data-screen="settings">
+          <span class="nav-btn-label">Settings</span>
+        </button>
+      </nav>
     </div>
-  </div>
 
-  <!-- Toast Notification System -->
-  <div id="toast-container" class="toast-container" aria-live="polite"></div>
-
-  <script src="app.js"></script>
-</body>
+    <script src="vendor-ndc.js"></script>
+    <script src="nepaliDate.js"></script>
+    <script src="billing.js"></script>
+    <script src="backup.js"></script>
+    <script src="store.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>
