@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { HomePage } from './pages/Home';
 import { MonthlySummaryPage } from './pages/MonthlySummary';
 import { SettingsPage } from './pages/Settings';
@@ -75,6 +76,7 @@ export const App: React.FC = () => {
         onChangeTab={setActiveTab}
         incompleteCount={incompleteCountInCurrentMonth}
       />
+      <Analytics />
     </div>
   );
 };
