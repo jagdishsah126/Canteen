@@ -441,4 +441,30 @@
       <div class="modal-body">
         <p id="modal-cmd-desc" class="modal-desc"></p>
 
-        <div class="modal-section
+        <div class="modal-section">
+          <h4>Syntax & Usage</h4>
+          <div class="code-snippet">
+            <pre><code id="modal-cmd-syntax"></code></pre>
+            <button class="btn-copy-mini" id="modal-copy-syntax">Copy</button>
+          </div>
+        </div>
+
+        <div class="modal-section" id="modal-alias-section">
+          <h4>Aliases & Shortcuts</h4>
+          <div id="modal-cmd-aliases" class="tag-list"></div>
+        </div>
+
+        <div class="modal-section">
+          <h4>Examples</h4>
+          <div id="modal-cmd-examples" class="examples-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
