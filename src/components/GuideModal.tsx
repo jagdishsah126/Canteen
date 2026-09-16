@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Check, ExternalLink, Calendar, Wallet, Layers, ShieldCheck, X } from 'lucide-react';
+import { BookOpen, ExternalLink, X, Smartphone, Settings, Calendar, Rocket, CheckCircle2 } from 'lucide-react';
 
 interface GuideModalProps {
   isOpen: boolean;
@@ -11,11 +11,12 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2.5">
             <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
@@ -23,100 +24,161 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Welcome to WRC Hostel
+                WRC Hostel User Guide 🍱
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Quick Guide for Canteen Meal Tracking
+                Get started in 4 easy steps • 100% Offline PWA
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition"
+            title="Close Guide"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Feature Highlights */}
-        <div className="space-y-3 text-xs">
-          <div className="flex items-start space-x-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-            <Calendar className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-slate-900 dark:text-slate-100 block">
-                Nepali Bikram Sambat (BS) Dates
-              </strong>
-              <span className="text-slate-600 dark:text-slate-300 text-[11px]">
-                Navigate by BS days and months. Matches your hostel's official ledger.
+        {/* Step-by-step Onboarding Walkthrough */}
+        <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
+          
+          {/* STEP 1 */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-6 h-6 rounded-lg bg-amber-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                1
               </span>
+              <Smartphone className="w-4 h-4 text-amber-500 shrink-0" />
+              <strong className="text-slate-900 dark:text-slate-100 text-sm">
+                Open URL & Install Shortcut
+              </strong>
+            </div>
+
+            <p className="text-[11.5px] leading-relaxed">
+              First step, open the app link in your phone browser:
+            </p>
+
+            <div className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center justify-between">
+              <span>https://canteen-wrc.vercel.app/</span>
+              <span className="text-[10px] uppercase font-sans px-1.5 py-0.5 bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 rounded">
+                PWA
+              </span>
+            </div>
+
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+              <li>
+                <strong>On Android:</strong> Tap the <strong>3 vertical dots (⋮)</strong> menu &rarr; tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
+              </li>
+              <li>
+                <strong>On iPhone (Safari):</strong> Tap <strong>Share (⎋)</strong> &rarr; tap <strong>"Add to Home Screen"</strong>.
+              </li>
+            </ul>
+
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[11px] flex items-center space-x-1.5 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+              <span>App is ready to work now — fully offline without login!</span>
             </div>
           </div>
 
-          <div className="flex items-start space-x-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-            <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-slate-900 dark:text-slate-100 block">
-                Auto-Save vs. Manual Confirmation
-              </strong>
-              <span className="text-slate-600 dark:text-slate-300 text-[11px]">
-                Today is continuously auto-saved. Browsing past/future days does not save until you click the <strong>Tick (✓)</strong> button. You can also turn on the Auto-Save catchup in Settings!
+          {/* STEP 2 */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-6 h-6 rounded-lg bg-amber-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                2
               </span>
+              <Settings className="w-4 h-4 text-amber-500 shrink-0" />
+              <strong className="text-slate-900 dark:text-slate-100 text-sm">
+                Go to Settings & Customize as You Wish
+              </strong>
             </div>
+
+            <p className="text-[11.5px] leading-relaxed">
+              Tap the <strong>Settings</strong> tab to personalize your canteen options:
+            </p>
+
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+              <li>
+                <strong>Add / Remove / Modify:</strong> Don't take Dinner, Masu, or Breakfast? Disable or remove any item from your daily feed with one tap.
+              </li>
+              <li>
+                <strong>Add Custom Items:</strong> Track Milk (दूध), Afternoon Snacks, or extra Roti with Toggles, Quantities, or Multi-Choice presets!
+              </li>
+              <li>
+                <strong>Auto-Save Daily Records:</strong> Turn this ON if you eat standard meals regularly so missed days auto-fill without visiting the app.
+              </li>
+              <li>
+                Tap <strong>↺ Reset Defaults</strong> anytime to restore standard hostel rates.
+              </li>
+            </ul>
           </div>
 
-          <div className="flex items-start space-x-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-            <Layers className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-slate-900 dark:text-slate-100 block">
-                100% Customizable & Removable Options
-              </strong>
-              <span className="text-slate-600 dark:text-slate-300 text-[11px]">
-                Don't eat Dinner or Masu? You can remove or disable ANY meal in Settings, or add custom options like Milk and Snacks with presets!
+          {/* STEP 3 */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-6 h-6 rounded-lg bg-amber-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                3
               </span>
+              <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
+              <strong className="text-slate-900 dark:text-slate-100 text-sm">
+                Backfill Current Month's Data
+              </strong>
             </div>
+
+            <p className="text-[11.5px] leading-relaxed">
+              Starting midway through the Nepali month (e.g. Bhadra)?
+            </p>
+
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+              <li>Use <strong>‹ Prev Day</strong> to click on past days of this month.</li>
+              <li>Mark what you ate on each day.</li>
+              <li>
+                Click the green <strong>Save Day (✓ Tick)</strong> button to lock each past day into your monthly ledger!
+              </li>
+            </ul>
           </div>
 
-          <div className="flex items-start space-x-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-            <Wallet className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-slate-900 dark:text-slate-100 block">
-                Monthly Audit & Snapshots
-              </strong>
-              <span className="text-slate-600 dark:text-slate-300 text-[11px]">
-                View your itemized monthly bill, check each individual day, and save monthly closing snapshots.
+          {/* STEP 4 */}
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-6 h-6 rounded-lg bg-amber-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                4
               </span>
+              <Rocket className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <strong className="text-slate-900 dark:text-slate-100 text-sm">
+                You're Ready to Go! 🚀
+              </strong>
             </div>
-          </div>
 
-          <div className="flex items-start space-x-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-slate-900 dark:text-slate-100 block">
-                100% Offline & Private
-              </strong>
-              <span className="text-slate-600 dark:text-slate-300 text-[11px]">
-                No server, no login, and no internet required. Your records live safely on your device.
-              </span>
-            </div>
+            <p className="text-[11.5px] leading-relaxed">
+              <strong>Today is always auto-saved!</strong> You only need to open the app when you do something different than your default values:
+            </p>
+
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-700 dark:text-slate-300">
+              <li>Had Momo for breakfast, skipped dinner, or added 2 Masu? Just tap once to update!</li>
+              <li>Eaten regular default meals? If Auto-Save is ON, you don't even need to open the app!</li>
+              <li>At the end of the month, open the <strong>Monthly Bill</strong> tab to audit every dish against the hostel ledger.</li>
+            </ul>
           </div>
         </div>
 
-        <div className="pt-2 flex flex-col gap-2">
+        {/* Action Buttons */}
+        <div className="pt-2 space-y-2">
           <button
             type="button"
             onClick={onClose}
             className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center space-x-1.5"
           >
-            <span>🚀 Got It, Let's Start!</span>
+            <span>🚀 Got It, Let's Start Tracking!</span>
           </button>
 
           <a
             href="/guide.html"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-2 text-center text-xs text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 font-medium flex items-center justify-center space-x-1"
+            className="w-full py-2 text-center text-xs text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 font-medium flex items-center justify-center space-x-1 transition"
           >
-            <span>View Full Guide Page</span>
+            <span>📖 Open Full Guide Page</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>

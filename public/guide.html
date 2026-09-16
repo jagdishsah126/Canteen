@@ -3,26 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>WRC Hostel Canteen Tracker — User Guide</title>
+  <title>WRC Hostel Canteen Tracker — Complete User Guide</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     :root {
       --primary: #d97706;
       --primary-dark: #b45309;
+      --primary-light: #fef3c7;
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --text: #1e293b;
       --text-muted: #64748b;
       --border: #e2e8f0;
+      --code-bg: #f1f5f9;
+      --accent-green: #10b981;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #0b0f19;
-        --card-bg: #1e293b;
+        --primary: #f59e0b;
+        --primary-dark: #d97706;
+        --primary-light: #78350f;
+        --bg: #090d16;
+        --card-bg: #131b2e;
         --text: #f8fafc;
         --text-muted: #94a3b8;
-        --border: #334155;
+        --border: #1e293b;
+        --code-bg: #1e293b;
+        --accent-green: #34d399;
       }
+    }
+    * {
+      box-sizing: border-box;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -33,53 +44,95 @@
       line-height: 1.6;
     }
     .container {
-      max-width: 640px;
+      max-width: 680px;
       margin: 0 auto;
     }
     header {
       text-align: center;
       margin-bottom: 2rem;
     }
-    .badge {
-      display: inline-block;
-      background: #fef3c7;
-      color: #b45309;
-      padding: 0.25rem 0.75rem;
+    .badge-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 0.3rem 0.85rem;
       border-radius: 9999px;
       font-size: 0.8rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
     }
     @media (prefers-color-scheme: dark) {
-      .badge {
-        background: #78350f;
-        color: #fde68a;
+      .badge-top {
+        color: #fef08a;
       }
     }
     h1 {
       margin: 0.25rem 0;
-      font-size: 1.75rem;
+      font-size: 1.85rem;
       color: var(--primary);
+      letter-spacing: -0.02em;
     }
     .subtitle {
       color: var(--text-muted);
       font-size: 0.95rem;
-      margin-top: 0.25rem;
+      margin-top: 0.35rem;
     }
-    .card {
+    .step-card {
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1.25rem;
+      border-radius: 1.25rem;
+      padding: 1.35rem;
       margin-bottom: 1.25rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      position: relative;
     }
-    h2 {
-      margin-top: 0;
-      font-size: 1.15rem;
+    .step-header {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .step-number {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.65rem;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+    .step-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0;
+    }
+    .url-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 0.65rem 0.9rem;
+      border-radius: 0.75rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+      color: var(--primary);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0.65rem 0;
+    }
+    .url-box a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .url-box a:hover {
+      text-decoration: underline;
     }
     ul, ol {
       padding-left: 1.25rem;
@@ -87,21 +140,25 @@
     }
     li {
       margin-bottom: 0.5rem;
+      font-size: 0.92rem;
     }
     .tip {
-      background: #f0fdf4;
-      border-left: 4px solid #22c55e;
+      background: rgba(16, 185, 129, 0.1);
+      border-left: 4px solid var(--accent-green);
       padding: 0.75rem 1rem;
       border-radius: 0.5rem;
-      font-size: 0.9rem;
-      color: #166534;
-      margin-top: 0.75rem;
+      font-size: 0.88rem;
+      color: var(--text);
+      margin-top: 0.85rem;
     }
-    @media (prefers-color-scheme: dark) {
-      .tip {
-        background: #052e16;
-        color: #bbf7d0;
-      }
+    .note {
+      background: rgba(217, 119, 6, 0.1);
+      border-left: 4px solid var(--primary);
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.88rem;
+      color: var(--text);
+      margin-top: 0.85rem;
     }
     .btn-return {
       display: block;
@@ -110,76 +167,134 @@
       background: var(--primary);
       color: white;
       text-decoration: none;
-      padding: 0.75rem;
-      border-radius: 0.75rem;
-      font-weight: bold;
+      padding: 0.85rem;
+      border-radius: 0.85rem;
+      font-weight: 700;
       font-size: 1rem;
-      margin-top: 1.5rem;
-      box-sizing: border-box;
-      transition: background 0.2s;
+      margin-top: 1.75rem;
+      transition: background 0.2s, transform 0.1s;
     }
     .btn-return:hover {
       background: var(--primary-dark);
+    }
+    .btn-return:active {
+      transform: scale(0.98);
+    }
+    footer {
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 1.75rem;
+      padding-bottom: 1rem;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <div class="badge">WRC Hostel User Manual</div>
+      <div class="badge-top">🇳🇵 WRC Hostel • IOE Paschimanchal</div>
       <h1>🍱 Canteen Tracker Guide</h1>
-      <p class="subtitle">Quick reference guide for tracking meals & calculating monthly bills</p>
+      <p class="subtitle">Complete step-by-step manual for tracking meals and calculating hostel monthly bills</p>
     </header>
 
-    <div class="card">
-      <h2>📅 1. Nepali Bikram Sambat (BS) Calendar</h2>
-      <p>The app displays dates in Bikram Sambat (e.g., <strong>Bhadra 27, 2083</strong>) so it matches the hostel canteen ledger exactly.</p>
-      <ul>
-        <li>Use <strong>Previous / Next</strong> buttons to navigate days.</li>
-        <li>Tap <strong>Today</strong> anytime to jump back to today's date.</li>
-      </ul>
-    </div>
+    <!-- STEP 1 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <h2 class="step-title">📱 Open & Install the App (Shortcut)</h2>
+      </div>
+      <p>First step, open the app link in your phone browser:</p>
+      
+      <div class="url-box">
+        <a href="https://canteen-wrc.vercel.app/" target="_blank" rel="noopener noreferrer">https://canteen-wrc.vercel.app/</a>
+        <span>↗</span>
+      </div>
 
-    <div class="card">
-      <h2>⚡ 2. Auto-Save vs. Manual Confirmation</h2>
       <ul>
-        <li><strong>Today's Date:</strong> Always automatically saves as you record meals.</li>
-        <li><strong>Past & Future Dates:</strong> When you browse to a past or future date, it opens in <em>Draft Mode</em>. It only saves to your bill when you tap the <strong>Tick (✓ Save Day)</strong> button!</li>
-        <li><strong>Auto-Save Feature:</strong> If enabled in Settings, the app automatically fills and saves missed days as per your default meals even when you don't open the app.</li>
+        <li><strong>On Android (Chrome / Brave / Edge):</strong> Tap the <strong>3 vertical dots (⋮)</strong> menu at the top-right corner, then tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+        <li><strong>On iPhone (Safari):</strong> Tap the <strong>Share button (⎋)</strong> at the bottom, scroll down, and tap <strong>"Add to Home Screen"</strong>.</li>
       </ul>
-    </div>
 
-    <div class="card">
-      <h2>🥐 3. Meals, Breakfast & Addons</h2>
-      <ul>
-        <li><strong>Morning Food & Dinner:</strong> Tap to toggle between Eaten and Skipped.</li>
-        <li><strong>Breakfast:</strong> By default marked as not eaten. When eaten, tap quick-tap presets (Chowmein, Momo, Tea) or type a custom item & price.</li>
-        <li><strong>Masu & Omelette:</strong> Use <strong>[ - ]</strong> and <strong>[ + ]</strong> buttons to adjust quantities.</li>
-        <li><strong>Custom Food Options:</strong> You can add custom items (like Milk or Snacks) in Settings!</li>
-      </ul>
-    </div>
-
-    <div class="card">
-      <h2>📊 4. Monthly Bill Summary</h2>
-      <ul>
-        <li>Open the <strong>Monthly Bill</strong> tab to inspect the total expected bill for the Nepali month.</li>
-        <li>Expand any day in the <strong>Daily Records</strong> list to verify every single dish against the canteen ledger.</li>
-        <li>Use <strong>Close Month</strong> to save a permanent snapshot when settling bills.</li>
-      </ul>
-    </div>
-
-    <div class="card">
-      <h2>⚙️ 5. Customization & Backup</h2>
-      <ul>
-        <li><strong>Removable Options:</strong> You can disable or delete ANY food item in Settings (even Morning Food or Dinner) if you don't eat it.</li>
-        <li><strong>Backup:</strong> Export your data as a JSON file anytime to protect against browser data clears.</li>
-      </ul>
       <div class="tip">
-        💡 <strong>Pro Tip:</strong> Install this app on your phone home screen using your browser's "Add to Home Screen" or "Install App" menu for full offline PWA access!
+        🎉 <strong>App is ready to work now!</strong> An icon will appear right on your phone's home screen. The app is a Progressive Web App (PWA) that operates <strong>100% offline</strong> without any server or internet connection needed!
       </div>
     </div>
 
+    <!-- STEP 2 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <h2 class="step-title">⚙️ Go to Settings & Customize as You Wish</h2>
+      </div>
+      <p>Open the <strong>Settings</strong> tab at the bottom navigation bar to tailor the app to your hostel routine:</p>
+      
+      <ul>
+        <li><strong>💰 Adjust Core Rates:</strong> Update default meal prices if rates change (Morning Food Rs. 72, Dinner Rs. 72, Masu Rs. 75, Omelette Rs. 30). Existing past bills remain frozen!</li>
+        <li><strong>🗑️ Remove or Hide Meals:</strong> Don't take Dinner, Masu, or Breakfast? You can disable any core meal from your daily feed with one tap. Tap <strong>↺ Reset Defaults</strong> anytime to restore them.</li>
+        <li><strong>➕ Add Custom Options:</strong> Want to track Milk (दूध), Afternoon Snacks, or extra Roti? Tap <strong>+ Add Custom Option</strong>:
+          <ul>
+            <li><em>Toggle:</em> Yes/No eaten checkbox (e.g. Milk).</li>
+            <li><em>Quantity:</em> Number stepper (e.g. Extra Roti).</li>
+            <li><em>Multi-Choice with Presets:</em> Dropdown items like Breakfast (e.g. Chowmein, Momo, Tea).</li>
+          </ul>
+        </li>
+        <li><strong>⚡ Auto-Save Daily Records:</strong> Turn this ON if you eat standard meals every day. Missed days will automatically update with default meals even if you forget to open the app!</li>
+      </ul>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <h2 class="step-title">📅 Backfill Current Month's Data</h2>
+      </div>
+      <p>If you're starting in the middle of a Nepali Bikram Sambat (BS) month (e.g., Bhadra):</p>
+      
+      <ul>
+        <li>Use the <strong>[ ‹ Prev Day ]</strong> arrow on the Home tab to navigate to earlier days of this month.</li>
+        <li>Mark what you ate on each past day (Morning Food, Dinner, Breakfast item, or Addons).</li>
+        <li>Click the green <strong>✓ Save Day (Tick)</strong> button at the top header to save each past day into your ledger!</li>
+        <li>Repeat for the elapsed days of the current month so your total bill matches your hostel's master ledger.</li>
+      </ul>
+
+      <div class="note">
+        💡 <strong>Remember:</strong> Browsing past or future days operates in <em>Draft Mode</em>. They are only added to your bill when you click the <strong>Tick (✓)</strong> button!
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">4</div>
+        <h2 class="step-title">🚀 Ready to Go! Your Daily Habit</h2>
+      </div>
+      <p>Now you are completely set up and ready to go:</p>
+      
+      <ul>
+        <li><strong>Today is always auto-saved:</strong> Whenever you open the app on today's date, changes save automatically.</li>
+        <li><strong>Eat standard meals?</strong> You don't have to do anything! If Auto-Save is ON, standard Morning Food and Dinner are recorded automatically.</li>
+        <li><strong>Did something different?</strong> Skipped dinner, had a plate of Momo, or added 2 Masu? Just open the app, tap once to edit it, and you're done!</li>
+        <li><strong>End-of-Month Audit:</strong> Tap the <strong>Monthly Bill</strong> tab to inspect your itemized summary day-by-day and compare against the canteen ledger before paying.</li>
+      </ul>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">5</div>
+        <h2 class="step-title">💾 Backup & Support Our Project</h2>
+      </div>
+      <ul>
+        <li><strong>Export Backup:</strong> Go to Settings and tap <strong>Export JSON</strong> periodically to save a backup to your device.</li>
+        <li><strong>💖 Support Jagdish & Zara:</strong> If this app helped you prevent canteen billing discrepancies, please visit the GitHub repository to star the project and share your feedback!</li>
+      </ul>
+    </div>
+
     <a href="/" class="btn-return">← Back to Canteen Tracker</a>
+
+    <footer>
+      Created with 💖 for WRC Hostel by Jagdish And Zara • 100% Offline PWA
+    </footer>
   </div>
 </body>
 </html>
