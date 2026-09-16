@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Support WRC Hostel Canteen Tracker 💖</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root {
+      --primary: #d97706;
+      --primary-dark: #b45309;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f19;
+        --card-bg: #1e293b;
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
+        --border: #334155;
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 2rem 1rem;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 90vh;
+    }
+    .container {
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 2rem 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .heart-icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+      display: inline-block;
+      animation: pulse 2s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+    h1 {
+      margin: 0.5rem 0;
+      font-size: 1.6rem;
+      color: var(--text);
+    }
+    p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin: 0.75rem 0 1.5rem 0;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.25rem;
+      border-radius: 0.85rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-github {
+      background: #24292f;
+      color: #ffffff;
+    }
+    .btn-github:hover {
+      background: #000000;
+      transform: translateY(-1px);
+    }
+    .btn-suggestions {
+      background: var(--primary);
+      color: #ffffff;
+    }
+    .btn-suggestions:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+    .btn-back {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .btn-back:hover {
+      background: var(--border);
+    }
+    footer {
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="heart-icon">💖</div>
+      <h1>Support WRC Hostel Canteen Tracker</h1>
+      <p>
+        Thank you for using WRC Hostel Canteen Tracker! If this tool helped you manage your monthly hostel bill, please show your support by starring our GitHub repository and sharing your ideas for new features.
+      </p>
+
+      <div class="actions">
+        <a href="https://github.com/jagdishsah126/Canteen" target="_blank" rel="noopener noreferrer" class="btn btn-github">
+          ⭐ Star on GitHub
+        </a>
+        <a href="https://github.com/jagdishsah126/Canteen/issues/new" target="_blank" rel="noopener noreferrer" class="btn btn-suggestions">
+          💡 Give Suggestions & Feedback
+        </a>
+        <a href="/" class="btn btn-back">
+          ← Return to App
+        </a>
+      </div>
+
+      <footer>
+        Created with 💖 by Jagdish And Zara
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

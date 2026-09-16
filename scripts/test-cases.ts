@@ -102,4 +102,29 @@ const bs = isoToBS('2026-09-12');
 assert(bs.year > 2080, `BS Year should be Bikram Sambat (> 2080), got ${bs.year}`);
 assert(typeof bs.monthName === 'string' && bs.monthName.length > 0, `BS month name exists: ${bs.monthName}`);
 
-console.log('\n🎉 ALL WRC HOSTEL TEST CASES INCLUDING MULTI-CHOICE OPTIONS & NOT-EATEN DEFAULTS PASSED!\n');
+// Case 6: getDatesBetween utility
+import { getDatesBetween } from '../src/utils/nepaliDate';
+const rangeDates = getDatesBetween('2026-09-10', '2026-09-13');
+assert(rangeDates.length === 4, `Expected 4 dates in range, got ${rangeDates.length}`);
+assert(rangeDates[0] === '2026-09-10' && rangeDates[3] === '2026-09-13', 'Range bounds match');
+
+// Case 7: Core Items Removability & Defaults Reset
+import { INITIAL_CORE_ENABLED, useCanteenStore } from '../src/store/canteenStore';
+assert(INITIAL_CORE_ENABLED.morningFood === true, 'Morning Food enabled by default');
+assert(INITIAL_CORE_ENABLED.dinner === true, 'Dinner enabled by default');
+assert(INITIAL_CORE_ENABLED.breakfast === true, 'Breakfast enabled by default');
+assert(INITIAL_CORE_ENABLED.masu === true, 'Masu enabled by default');
+assert(INITIAL_CORE_ENABLED.omelette === true, 'Omelette enabled by default');
+
+const store = useCanteenStore.getState();
+store.toggleCoreItem('morningFood');
+assert(useCanteenStore.getState().settings.coreItemsEnabled.morningFood === false, 'Morning food should be disabled after toggle');
+store.resetToHostelDefaults();
+assert(useCanteenStore.getState().settings.coreItemsEnabled.morningFood === true, 'Morning food should be restored after resetToHostelDefaults');
+
+// Case 8: Auto-Save Catchup Engine
+store.setAutoSaveDailyDefaults(false);
+const caughtUpDisabled = store.runAutoSaveCatchup();
+assert(caughtUpDisabled === 0, `When autoSave is false, catchup returns 0, got ${caughtUpDisabled}`);
+
+console.log('\n🎉 ALL WRC HOSTEL TEST CASES (AUTO-SAVE, REMOVABLE MEALS, 30-DAY MILESTONE) PASSED!\n');

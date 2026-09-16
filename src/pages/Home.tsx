@@ -29,6 +29,7 @@ interface HomePageProps {
 export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange }) => {
   const {
     records,
+    settings,
     customOptions,
     breakfastPresets,
     createDefaultRecord,
@@ -383,56 +384,79 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
       {/* Main Content Feed */}
       <main className="max-w-md mx-auto px-4 py-3.5 space-y-3.5">
         {/* Core Option 1: Morning Food */}
-        <MealToggle
-          label="Morning Food"
-          sublabel="Main meal (Lunch)"
-          icon={<Sun className="w-5 h-5" />}
-          eaten={activeRecord.morningFood.eaten}
-          price={activeRecord.morningFood.price}
-          onToggle={handleToggleMorning}
-        />
+        {settings.coreItemsEnabled?.morningFood !== false && (
+          <MealToggle
+            label="Morning Food"
+            sublabel="Main meal (Lunch)"
+            icon={<Sun className="w-5 h-5" />}
+            eaten={activeRecord.morningFood.eaten}
+            price={activeRecord.morningFood.price}
+            onToggle={handleToggleMorning}
+          />
+        )}
 
         {/* Core Option 2: Breakfast (By Default Skipped / Not Eaten) */}
-        <BreakfastSelector
-          breakfast={activeRecord.breakfast}
-          presets={breakfastPresets}
-          onToggleEaten={handleToggleBreakfast}
-          onSelectPreset={(preset) => handleSetBreakfast(preset.label, preset.price)}
-          onSetCustom={(item, price) => handleSetBreakfast(item, price)}
-        />
+        {settings.coreItemsEnabled?.breakfast !== false && (
+          <BreakfastSelector
+            breakfast={activeRecord.breakfast}
+            presets={breakfastPresets}
+            onToggleEaten={handleToggleBreakfast}
+            onSelectPreset={(preset) => handleSetBreakfast(preset.label, preset.price)}
+            onSetCustom={(item, price) => handleSetBreakfast(item, price)}
+          />
+        )}
 
         {/* Core Option 3: Dinner */}
-        <MealToggle
-          label="Dinner"
-          sublabel="Night meal"
-          icon={<Moon className="w-5 h-5" />}
-          eaten={activeRecord.dinner.eaten}
-          price={activeRecord.dinner.price}
-          onToggle={handleToggleDinner}
-        />
+        {settings.coreItemsEnabled?.dinner !== false && (
+          <MealToggle
+            label="Dinner"
+            sublabel="Night meal"
+            icon={<Moon className="w-5 h-5" />}
+            eaten={activeRecord.dinner.eaten}
+            price={activeRecord.dinner.price}
+            onToggle={handleToggleDinner}
+          />
+        )}
 
         {/* Core Option 4 & 5: Masu & Omelette */}
-        <QuantityControl
-          label="Masu"
-          sublabel="Non-veg addon"
-          icon={<Drumstick className="w-5 h-5" />}
-          quantity={activeRecord.masu.quantity}
-          unitPrice={activeRecord.masu.unitPrice}
-          onIncrement={handleIncrementMasu}
-          onDecrement={handleDecrementMasu}
-          onSetQuantity={handleSetMasuQuantity}
-        />
+        {settings.coreItemsEnabled?.masu !== false && (
+          <QuantityControl
+            label="Masu"
+            sublabel="Non-veg addon"
+            icon={<Drumstick className="w-5 h-5" />}
+            quantity={activeRecord.masu.quantity}
+            unitPrice={activeRecord.masu.unitPrice}
+            onIncrement={handleIncrementMasu}
+            onDecrement={handleDecrementMasu}
+            onSetQuantity={handleSetMasuQuantity}
+          />
+        )}
 
-        <QuantityControl
-          label="Omelette"
-          sublabel="Egg addon"
-          icon={<Egg className="w-5 h-5" />}
-          quantity={activeRecord.omelette.quantity}
-          unitPrice={activeRecord.omelette.unitPrice}
-          onIncrement={handleIncrementOmelette}
-          onDecrement={handleDecrementOmelette}
-          onSetQuantity={handleSetOmeletteQuantity}
-        />
+        {settings.coreItemsEnabled?.omelette !== false && (
+          <QuantityControl
+            label="Omelette"
+            sublabel="Egg addon"
+            icon={<Egg className="w-5 h-5" />}
+            quantity={activeRecord.omelette.quantity}
+            unitPrice={activeRecord.omelette.unitPrice}
+            onIncrement={handleIncrementOmelette}
+            onDecrement={handleDecrementOmelette}
+            onSetQuantity={handleSetOmeletteQuantity}
+          />
+        )}
+
+        {/* Empty state when all core items and custom options are disabled */}
+        {settings.coreItemsEnabled?.morningFood === false &&
+          settings.coreItemsEnabled?.breakfast === false &&
+          settings.coreItemsEnabled?.dinner === false &&
+          settings.coreItemsEnabled?.masu === false &&
+          settings.coreItemsEnabled?.omelette === false &&
+          customOptions.length === 0 && (
+            <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl space-y-1">
+              <p className="font-semibold text-slate-700 dark:text-slate-200">No Meals Configured</p>
+              <p>All core options are currently disabled. You can re-enable them or reset to defaults in Settings.</p>
+            </div>
+          )}
 
         {/* Dynamic Custom Options (Created by User in Settings) */}
         {customOptions.length > 0 && (

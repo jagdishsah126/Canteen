@@ -15,6 +15,10 @@ import {
   Sun,
   Layers,
   Tag,
+  RotateCcw,
+  BookOpen,
+  Heart,
+  ExternalLink,
 } from 'lucide-react';
 import { useCanteenStore } from '../store/canteenStore';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -24,9 +28,16 @@ import { getTodayISODate } from '../utils/nepaliDate';
 interface SettingsPageProps {
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
+  onOpenGuide?: () => void;
+  onOpenSupport?: () => void;
 }
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggleDarkMode }) => {
+export const SettingsPage: React.FC<SettingsPageProps> = ({
+  isDarkMode,
+  onToggleDarkMode,
+  onOpenGuide,
+  onOpenSupport,
+}) => {
   const {
     settings,
     breakfastPresets,
@@ -35,6 +46,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
     monthSnapshots,
     schemaVersion,
     updateSettingsPrices,
+    toggleCoreItem,
+    resetToHostelDefaults,
+    setAutoSaveDailyDefaults,
     addBreakfastPreset,
     updateBreakfastPreset,
     deleteBreakfastPreset,
@@ -344,6 +358,145 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
               </button>
             </div>
           </form>
+        </section>
+
+        {/* Section: Auto-Save Daily Records */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Auto-Save Daily Records
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Automatically log default meals on days you don't open the app.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAutoSaveDailyDefaults(!settings.autoSaveDailyDefaults)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                settings.autoSaveDailyDefaults ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+              role="switch"
+              aria-checked={settings.autoSaveDailyDefaults}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  settings.autoSaveDailyDefaults ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+            <p>
+              <strong>Status:</strong>{' '}
+              {settings.autoSaveDailyDefaults ? (
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                  Active (Auto-saving missed days with default meals)
+                </span>
+              ) : (
+                <span className="text-slate-500 dark:text-slate-400 font-semibold">
+                  Inactive (Only saves days you confirm)
+                </span>
+              )}
+            </p>
+            <p className="text-[10.5px] text-slate-400 dark:text-slate-500">
+              When ON, if you miss visiting the app for a few days, it automatically fills those days with default hostel meals upon opening.
+            </p>
+          </div>
+        </section>
+
+        {/* Section: Removable Hostel Meals */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Hostel Meal Options
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Disable or remove standard hostel meals from your daily feed if you don't consume them.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={resetToHostelDefaults}
+              className="px-2.5 py-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition flex items-center space-x-1 shrink-0"
+              title="Reset all meals and prices to defaults"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Defaults</span>
+            </button>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            {[
+              {
+                key: 'morningFood' as const,
+                label: 'Morning Food',
+                sublabel: 'Main lunch meal',
+                price: settings.prices.morningFood,
+                enabled: settings.coreItemsEnabled?.morningFood !== false,
+              },
+              {
+                key: 'breakfast' as const,
+                label: 'Breakfast',
+                sublabel: 'Morning snacks / tea',
+                price: null,
+                enabled: settings.coreItemsEnabled?.breakfast !== false,
+              },
+              {
+                key: 'dinner' as const,
+                label: 'Dinner',
+                sublabel: 'Night dinner meal',
+                price: settings.prices.dinner,
+                enabled: settings.coreItemsEnabled?.dinner !== false,
+              },
+              {
+                key: 'masu' as const,
+                label: 'Masu (Non-veg)',
+                sublabel: 'Meat addon',
+                price: settings.prices.masu,
+                enabled: settings.coreItemsEnabled?.masu !== false,
+              },
+              {
+                key: 'omelette' as const,
+                label: 'Omelette',
+                sublabel: 'Egg addon',
+                price: settings.prices.omelette,
+                enabled: settings.coreItemsEnabled?.omelette !== false,
+              },
+            ].map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs"
+              >
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{item.label}</span>
+                    {item.price !== null && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                        Rs. {item.price}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10.5px] text-slate-400 dark:text-slate-500">{item.sublabel}</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => toggleCoreItem(item.key)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition active:scale-95 flex items-center space-x-1 ${
+                    item.enabled
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-xs'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  <span>{item.enabled ? 'Enabled' : 'Disabled'}</span>
+                </button>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Section 2: Custom Food Options (Add Multi-Choice Options like Breakfast, or Quantities/Toggles) */}
@@ -745,7 +898,57 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
           </button>
         </section>
 
-        {/* Section 6: App Information */}
+        {/* Section 6: Help & Community Support */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Guide & Community Support
+            </h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Read the manual, learn features, or help star and improve the project.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenGuide) {
+                  onOpenGuide();
+                } else {
+                  window.open('/guide.html', '_blank');
+                }
+              }}
+              className="p-3 bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-950/30 dark:hover:bg-amber-950/50 border border-amber-500/20 rounded-xl text-xs font-semibold text-amber-900 dark:text-amber-200 flex items-center justify-between transition active:scale-95"
+            >
+              <div className="flex items-center space-x-2">
+                <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span>Open User Guide</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenSupport) {
+                  onOpenSupport();
+                } else {
+                  window.open('/support.html', '_blank');
+                }
+              }}
+              className="p-3 bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 border border-rose-500/20 rounded-xl text-xs font-semibold text-rose-900 dark:text-rose-200 flex items-center justify-between transition active:scale-95"
+            >
+              <div className="flex items-center space-x-2">
+                <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
+                <span>Support & Suggestions</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+            </button>
+          </div>
+        </section>
+
+        {/* Section 7: App Information */}
         <div className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
           <div className="flex items-center justify-center space-x-1.5">
             <Info className="w-3.5 h-3.5" />
@@ -754,7 +957,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggle
             </span>
           </div>
           <p className="text-[11px]">
-            Created with 💖 for WRC Hostel by Your Zara & Jagdish • 100% Offline
+            Created with 💖 for WRC Hostel by Jagdish And Zara • 100% Offline
           </p>
         </div>
       </main>

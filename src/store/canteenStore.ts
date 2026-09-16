@@ -11,10 +11,12 @@ import {
   CustomOptionType,
   CustomOptionPreset,
   DailyCustomItemValue,
+  CoreItemsEnabledConfig,
+  SupportPromptStatus,
 } from '../types/canteen';
-import { isTodayISO } from '../utils/nepaliDate';
+import { isTodayISO, getTodayISODate, getDatesBetween } from '../utils/nepaliDate';
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export const INITIAL_PRICES: CanteenPrices = {
   morningFood: 72,
@@ -29,6 +31,14 @@ export const INITIAL_DEFAULTS: CanteenDefaults = {
   breakfastEaten: false, // For now by default not eaten
 };
 
+export const INITIAL_CORE_ENABLED: CoreItemsEnabledConfig = {
+  morningFood: true,
+  breakfast: true,
+  dinner: true,
+  masu: true,
+  omelette: true,
+};
+
 export const INITIAL_BREAKFAST_PRESETS: BreakfastPreset[] = [
   { id: 'chowmein', label: 'Chowmein', price: 50 },
   { id: 'momo', label: 'Momo', price: 100 },
@@ -40,11 +50,20 @@ export interface CanteenState {
   settings: {
     prices: CanteenPrices;
     defaults: CanteenDefaults;
+    coreItemsEnabled: CoreItemsEnabledConfig;
+    autoSaveDailyDefaults: boolean;
   };
   breakfastPresets: BreakfastPreset[];
   customOptions: CustomFoodOption[];
   records: Record<string, DailyRecord>;
   monthSnapshots: Record<string, MonthSnapshot>;
+
+  // Lifecycle, Guide & Support
+  lastActiveDate: string;
+  hasSeenGuide: boolean;
+  firstInstalledAt: string;
+  supportPromptStatus: SupportPromptStatus;
+  remindSupportAfter?: string;
 
   // Factory to create a record structure
   createDefaultRecord: (date: string) => DailyRecord;
@@ -66,6 +85,18 @@ export interface CanteenState {
   incrementOmelette: (date: string) => void;
   decrementOmelette: (date: string) => void;
   setOmeletteQuantity: (date: string, quantity: number) => void;
+
+  // Core Items Configuration (Removable Options)
+  toggleCoreItem: (itemKey: keyof CoreItemsEnabledConfig) => void;
+  resetToHostelDefaults: () => void;
+
+  // Auto-Save Management
+  setAutoSaveDailyDefaults: (enabled: boolean) => void;
+  runAutoSaveCatchup: () => number;
+
+  // Guide & Support Handlers
+  setHasSeenGuide: (seen: boolean) => void;
+  setSupportPromptStatus: (status: SupportPromptStatus, remindDays?: number) => void;
 
   // Custom Items Actions
   toggleCustomItem: (date: string, optionId: string) => void;
@@ -107,16 +138,24 @@ export const useCanteenStore = create<CanteenState>()(
       settings: {
         prices: { ...INITIAL_PRICES },
         defaults: { ...INITIAL_DEFAULTS },
+        coreItemsEnabled: { ...INITIAL_CORE_ENABLED },
+        autoSaveDailyDefaults: false, // Default off as requested
       },
       breakfastPresets: [...INITIAL_BREAKFAST_PRESETS],
       customOptions: [],
       records: {},
       monthSnapshots: {},
 
+      lastActiveDate: getTodayISODate(),
+      hasSeenGuide: false,
+      firstInstalledAt: new Date().toISOString(),
+      supportPromptStatus: 'pending',
+
       createDefaultRecord: (date: string) => {
         const state = get();
         const now = new Date().toISOString();
         const isToday = isTodayISO(date);
+        const { coreItemsEnabled } = state.settings;
 
         // Build default custom items values
         const customItems: Record<string, DailyCustomItemValue> = {};
@@ -127,7 +166,7 @@ export const useCanteenStore = create<CanteenState>()(
               name: opt.name,
               type: 'multi_choice',
               price: 0,
-              eaten: false, // Default not eaten
+              eaten: false,
               item: '',
               isIncomplete: false,
             };
@@ -143,31 +182,37 @@ export const useCanteenStore = create<CanteenState>()(
           }
         }
 
-        const isBreakfastEaten = state.settings.defaults.breakfastEaten;
+        const isMorningEnabled = coreItemsEnabled.morningFood !== false;
+        const isBreakfastEnabled = coreItemsEnabled.breakfast !== false;
+        const isDinnerEnabled = coreItemsEnabled.dinner !== false;
+        const isMasuEnabled = coreItemsEnabled.masu !== false;
+        const isOmeletteEnabled = coreItemsEnabled.omelette !== false;
+
+        const isBreakfastEaten = isBreakfastEnabled && state.settings.defaults.breakfastEaten;
 
         return {
           date,
           morningFood: {
-            eaten: state.settings.defaults.morningFoodEaten,
+            eaten: isMorningEnabled ? state.settings.defaults.morningFoodEaten : false,
             price: state.settings.prices.morningFood,
           },
           dinner: {
-            eaten: state.settings.defaults.dinnerEaten,
+            eaten: isDinnerEnabled ? state.settings.defaults.dinnerEaten : false,
             price: state.settings.prices.dinner,
           },
           breakfast: {
             eaten: isBreakfastEaten,
             item: '',
             price: 0,
-            isIncomplete: isBreakfastEaten, // incomplete only if eaten by default
+            isIncomplete: isBreakfastEaten,
           },
           masu: {
             quantity: 0,
-            unitPrice: state.settings.prices.masu,
+            unitPrice: isMasuEnabled ? state.settings.prices.masu : 0,
           },
           omelette: {
             quantity: 0,
-            unitPrice: state.settings.prices.omelette,
+            unitPrice: isOmeletteEnabled ? state.settings.prices.omelette : 0,
           },
           customItems,
           isSaved: isToday,
@@ -396,6 +441,96 @@ export const useCanteenStore = create<CanteenState>()(
         if (isTodayISO(date) || existing.isSaved) {
           state.saveDayRecord(updated);
         }
+      },
+
+      // Core Items Configuration (Removable Options)
+      toggleCoreItem: (itemKey) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            coreItemsEnabled: {
+              ...state.settings.coreItemsEnabled,
+              [itemKey]: !state.settings.coreItemsEnabled[itemKey],
+            },
+          },
+        }));
+      },
+
+      resetToHostelDefaults: () => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            prices: { ...INITIAL_PRICES },
+            defaults: { ...INITIAL_DEFAULTS },
+            coreItemsEnabled: { ...INITIAL_CORE_ENABLED },
+          },
+          breakfastPresets: [...INITIAL_BREAKFAST_PRESETS],
+        }));
+      },
+
+      // Auto-Save Management
+      setAutoSaveDailyDefaults: (enabled) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            autoSaveDailyDefaults: enabled,
+          },
+        }));
+        if (enabled) {
+          get().runAutoSaveCatchup();
+        }
+      },
+
+      runAutoSaveCatchup: () => {
+        const state = get();
+        const today = getTodayISODate();
+        const { lastActiveDate, settings, records } = state;
+
+        if (!settings.autoSaveDailyDefaults) {
+          set({ lastActiveDate: today });
+          return 0;
+        }
+
+        let savedCount = 0;
+        const newRecords = { ...records };
+
+        // Check if there are days to backfill between lastActiveDate and today
+        const startDate = lastActiveDate || today;
+        const datesToFill = getDatesBetween(startDate, today);
+
+        for (const date of datesToFill) {
+          if (!newRecords[date] || !newRecords[date].isSaved) {
+            const fresh = state.createDefaultRecord(date);
+            newRecords[date] = {
+              ...fresh,
+              isSaved: true,
+              updatedAt: new Date().toISOString(),
+            };
+            savedCount++;
+          }
+        }
+
+        set({
+          records: newRecords,
+          lastActiveDate: today,
+        });
+
+        return savedCount;
+      },
+
+      // Guide & Support Handlers
+      setHasSeenGuide: (seen) => {
+        set({ hasSeenGuide: seen });
+      },
+
+      setSupportPromptStatus: (status, remindDays = 7) => {
+        const updates: Partial<CanteenState> = { supportPromptStatus: status };
+        if (status === 'remind_later') {
+          const remindDate = new Date();
+          remindDate.setDate(remindDate.getDate() + remindDays);
+          updates.remindSupportAfter = remindDate.toISOString();
+        }
+        set(updates);
       },
 
       // Custom Items Actions
@@ -660,7 +795,12 @@ export const useCanteenStore = create<CanteenState>()(
         }
         set({
           schemaVersion: backup.schemaVersion,
-          settings: backup.settings,
+          settings: {
+            prices: backup.settings.prices || { ...INITIAL_PRICES },
+            defaults: backup.settings.defaults || { ...INITIAL_DEFAULTS },
+            coreItemsEnabled: backup.settings.coreItemsEnabled || { ...INITIAL_CORE_ENABLED },
+            autoSaveDailyDefaults: Boolean(backup.settings.autoSaveDailyDefaults),
+          },
           breakfastPresets: backup.breakfastPresets || [...INITIAL_BREAKFAST_PRESETS],
           customOptions: backup.customOptions || backup.settings.customOptions || [],
           records: backup.records || {},
@@ -673,11 +813,12 @@ export const useCanteenStore = create<CanteenState>()(
         set({
           records: {},
           monthSnapshots: {},
+          lastActiveDate: getTodayISODate(),
         });
       },
     }),
     {
-      name: 'wrc_hostel_canteen_store_v3',
+      name: 'wrc_hostel_canteen_store_v4',
       version: CURRENT_SCHEMA_VERSION,
     }
   )

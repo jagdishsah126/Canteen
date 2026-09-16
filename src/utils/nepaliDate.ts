@@ -140,3 +140,21 @@ export function getISODatesForBSMonth(bsYear: number, bsMonthIndex: number): str
   }
   return dates;
 }
+
+/**
+ * Returns an array of ISO dates between startDate and endDate inclusive.
+ */
+export function getDatesBetween(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  if (startDate > endDate) return dates;
+  let current = startDate;
+  // Safety guard against infinite loops (max 366 days)
+  let count = 0;
+  while (current <= endDate && count < 366) {
+    dates.push(current);
+    current = offsetISODate(current, 1);
+    count++;
+  }
+  return dates;
+}
+

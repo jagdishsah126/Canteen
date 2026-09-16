@@ -4,6 +4,8 @@ import { HomePage } from './pages/Home';
 import { MonthlySummaryPage } from './pages/MonthlySummary';
 import { SettingsPage } from './pages/Settings';
 import { Navigation, ActiveTab } from './components/Navigation';
+import { GuideModal } from './components/GuideModal';
+import { SupportModal } from './components/SupportModal';
 import { useCanteenStore } from './store/canteenStore';
 import { getTodayISODate, isoToBS } from './utils/nepaliDate';
 import { calculateDailyCost } from './utils/billing';
@@ -16,7 +18,19 @@ export const App: React.FC = () => {
       (!('canteen_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
-  const { records } = useCanteenStore();
+  const {
+    records,
+    hasSeenGuide,
+    setHasSeenGuide,
+    firstInstalledAt,
+    supportPromptStatus,
+    remindSupportAfter,
+    setSupportPromptStatus,
+    runAutoSaveCatchup,
+  } = useCanteenStore();
+
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [isManualSupportModalOpen, setIsManualSupportModalOpen] = useState(false);
 
   // Sync dark mode class with HTML element
   useEffect(() => {
@@ -29,8 +43,80 @@ export const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
+  // Run auto-save catchup on mount and tab focus / visibility change
+  useEffect(() => {
+    runAutoSaveCatchup();
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        runAutoSaveCatchup();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+    };
+  }, [runAutoSaveCatchup]);
+
+  // First time auto-display guide modal
+  useEffect(() => {
+    if (!hasSeenGuide) {
+      setIsGuideModalOpen(true);
+    }
+  }, [hasSeenGuide]);
+
   const handleToggleDarkMode = () => {
     setIsDarkMode((prev) => !prev);
+  };
+
+  const handleCloseGuide = () => {
+    setHasSeenGuide(true);
+    setIsGuideModalOpen(false);
+  };
+
+  // 1-month support modal condition
+  const isMonthMilestoneDue = useMemo(() => {
+    if (supportPromptStatus === 'dismissed' || supportPromptStatus === 'supported') {
+      return false;
+    }
+    const now = Date.now();
+    if (supportPromptStatus === 'remind_later' && remindSupportAfter) {
+      return now >= new Date(remindSupportAfter).getTime();
+    }
+    if (firstInstalledAt) {
+      const installedTime = new Date(firstInstalledAt).getTime();
+      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+      return now - installedTime >= thirtyDaysMs;
+    }
+    return false;
+  }, [supportPromptStatus, remindSupportAfter, firstInstalledAt]);
+
+  const isSupportModalVisible = isMonthMilestoneDue || isManualSupportModalOpen;
+
+  const handleStarGitHub = () => {
+    window.open('https://github.com/jagdishsah126/Canteen', '_blank');
+    setSupportPromptStatus('supported');
+    setIsManualSupportModalOpen(false);
+  };
+
+  const handleGiveSuggestions = () => {
+    window.open('https://github.com/jagdishsah126/Canteen/issues/new', '_blank');
+    setSupportPromptStatus('supported');
+    setIsManualSupportModalOpen(false);
+  };
+
+  const handleRemindLater = () => {
+    setSupportPromptStatus('remind_later', 7);
+    setIsManualSupportModalOpen(false);
+  };
+
+  const handleDismissSupport = () => {
+    setSupportPromptStatus('dismissed');
+    setIsManualSupportModalOpen(false);
   };
 
   // Calculate incomplete records count for the current BS month
@@ -68,6 +154,8 @@ export const App: React.FC = () => {
         <SettingsPage
           isDarkMode={isDarkMode}
           onToggleDarkMode={handleToggleDarkMode}
+          onOpenGuide={() => setIsGuideModalOpen(true)}
+          onOpenSupport={() => setIsManualSupportModalOpen(true)}
         />
       )}
 
@@ -76,6 +164,22 @@ export const App: React.FC = () => {
         onChangeTab={setActiveTab}
         incompleteCount={incompleteCountInCurrentMonth}
       />
+
+      {/* Interactive Guide Modal */}
+      <GuideModal
+        isOpen={isGuideModalOpen}
+        onClose={handleCloseGuide}
+      />
+
+      {/* 1-Month Milestone & Community Support Modal */}
+      <SupportModal
+        isOpen={isSupportModalVisible}
+        onStarGitHub={handleStarGitHub}
+        onGiveSuggestions={handleGiveSuggestions}
+        onRemindLater={handleRemindLater}
+        onDismiss={handleDismissSupport}
+      />
+
       <Analytics />
     </div>
   );

@@ -44,6 +44,14 @@ export interface DailyCustomItemValue {
   isIncomplete?: boolean; // for multi_choice when eaten is true but price/item missing
 }
 
+export interface CoreItemsEnabledConfig {
+  morningFood: boolean;
+  breakfast: boolean;
+  dinner: boolean;
+  masu: boolean;
+  omelette: boolean;
+}
+
 export interface DailyRecord {
   date: string; // ISO format "YYYY-MM-DD"
   morningFood: MealRecord;
@@ -76,6 +84,8 @@ export interface CanteenDefaults {
   breakfastEaten: boolean;   // default false (not eaten by default)
 }
 
+export type SupportPromptStatus = 'pending' | 'dismissed' | 'supported' | 'remind_later';
+
 export interface MonthSnapshot {
   bsYear: number;
   bsMonth: number; // 1 to 12
@@ -102,6 +112,8 @@ export interface BackupPayload {
   settings: {
     prices: CanteenPrices;
     defaults: CanteenDefaults;
+    coreItemsEnabled?: CoreItemsEnabledConfig;
+    autoSaveDailyDefaults?: boolean;
     customOptions?: CustomFoodOption[];
   };
   breakfastPresets: BreakfastPreset[];

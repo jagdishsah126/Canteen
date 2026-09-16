@@ -2,7 +2,7 @@
 
 A mobile-first, 100% offline Progressive Web App (PWA) designed for students & residents of **WRC Hostel** (Paschimanchal Campus, IOE) to personally record canteen food consumption and calculate monthly canteen bills using the **Nepali Bikram Sambat (BS)** calendar.
 
-Built with 💖 by **Your Zara** & **Jagdish**.
+Built with 💖 by **Jagdish And Zara**.
 
 ---
 
