@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Star, MessageSquare, X, Clock, ExternalLink } from 'lucide-react';
+import { Heart, Star, MessageSquare, X, Clock, ExternalLink, MessageCircle, Globe } from 'lucide-react';
 
 interface SupportModalProps {
   isOpen: boolean;
@@ -40,10 +40,10 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">
-            1 Month with WRC Hostel! 🍱🎉
+            Support & Community 💖🍱
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
-            You've been tracking your canteen meals for a whole month! If this app helps you avoid billing mistakes, please show some love by starring our GitHub repo and sharing your suggestions.
+            Thank you for using WRC Hostel Canteen Tracker! If this tool helps you manage your canteen expenses, please star the project, give feedback, or connect directly.
           </p>
         </div>
 
@@ -64,9 +64,42 @@ export const SupportModal: React.FC<SupportModalProps> = ({
             className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center space-x-2 active:scale-95"
           >
             <MessageSquare className="w-4 h-4" />
-            <span>Give Suggestions</span>
+            <span>Give Suggestions (GitHub Issue)</span>
             <ExternalLink className="w-3.5 h-3.5 opacity-70" />
           </button>
+
+          {/* Direct Developer Contact */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-left">
+            <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">
+              Direct Contact & Support
+            </div>
+
+            <a
+              href="https://wa.me/9779702406668?text=Hi%20Jagdish,%20regarding%20WRC%20Hostel%20Canteen%20Tracker"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 dark:bg-emerald-950/40 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-medium text-xs rounded-xl transition flex items-center justify-between"
+            >
+              <div className="flex items-center space-x-2">
+                <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">WhatsApp: +977 9702406668</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0 ml-1" />
+            </a>
+
+            <a
+              href="https://jagdishsah.com.np"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2 px-3 bg-blue-500/10 hover:bg-blue-500/20 dark:bg-blue-950/40 border border-blue-500/20 text-blue-800 dark:text-blue-300 font-medium text-xs rounded-xl transition flex items-center justify-between"
+            >
+              <div className="flex items-center space-x-2">
+                <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="truncate">Website: jagdishsah.com.np</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0 ml-1" />
+            </a>
+          </div>
 
           <div className="flex items-center space-x-2 pt-1">
             <button

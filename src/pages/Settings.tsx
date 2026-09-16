@@ -1251,8 +1251,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
         </section>
 
-        {/* Section 7: App Information */}
-        <div className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
+        {/* Section 7: App Information & Contact */}
+        <div className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1.5 pb-4">
           <div className="flex items-center justify-center space-x-1.5">
             <Info className="w-3.5 h-3.5" />
             <span className="font-semibold text-slate-600 dark:text-slate-400">
@@ -1262,6 +1262,25 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <p className="text-[11px]">
             Created with 💖 for WRC Hostel by Jagdish And Zara • 100% Offline
           </p>
+          <div className="flex items-center justify-center flex-wrap gap-x-2 gap-y-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium pt-0.5">
+            <a
+              href="https://wa.me/9779702406668?text=Hi%20Jagdish,%20regarding%20WRC%20Hostel%20Canteen%20Tracker"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline flex items-center space-x-1"
+            >
+              <span>WhatsApp: +977 9702406668</span>
+            </a>
+            <span>•</span>
+            <a
+              href="https://jagdishsah.com.np"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline flex items-center space-x-1"
+            >
+              <span>jagdishsah.com.np</span>
+            </a>
+          </div>
         </div>
       </main>
 
