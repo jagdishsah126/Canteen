@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { HomePage } from './pages/Home';
 import { MonthlySummaryPage } from './pages/MonthlySummary';
@@ -9,6 +9,7 @@ import { SupportModal } from './components/SupportModal';
 import { useCanteenStore } from './store/canteenStore';
 import { getTodayISODate, isoToBS } from './utils/nepaliDate';
 import { calculateDailyCost } from './utils/billing';
+import { sendLocalNotification } from './utils/notifications';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -20,6 +21,7 @@ export const App: React.FC = () => {
 
   const {
     records,
+    settings,
     hasSeenGuide,
     setHasSeenGuide,
     firstInstalledAt,
@@ -31,6 +33,44 @@ export const App: React.FC = () => {
 
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isManualSupportModalOpen, setIsManualSupportModalOpen] = useState(false);
+
+  // Daily offline meal reminders check
+  const lastReminderFiredRef = useRef<{ morning?: string; evening?: string }>({});
+
+  useEffect(() => {
+    if (!settings.reminderConfig?.enabled) return;
+
+    const checkReminders = () => {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${hours}:${minutes}`;
+      const todayStr = getTodayISODate();
+
+      const { morningTime = '09:30', eveningTime = '21:30' } = settings.reminderConfig;
+
+      if (currentTimeStr === morningTime && lastReminderFiredRef.current.morning !== todayStr) {
+        lastReminderFiredRef.current.morning = todayStr;
+        sendLocalNotification(
+          '☀️ Morning Meal & Breakfast Reminder',
+          'Did you have morning meal or breakfast today? Tap to record it in WRC Canteen Tracker!'
+        );
+      }
+
+      if (currentTimeStr === eveningTime && lastReminderFiredRef.current.evening !== todayStr) {
+        lastReminderFiredRef.current.evening = todayStr;
+        sendLocalNotification(
+          '🌙 Dinner & Night Mess Reminder',
+          'Did you have dinner or any extra items tonight? Tap to record it before bed!'
+        );
+      }
+    };
+
+    checkReminders();
+    const interval = setInterval(checkReminders, 30000);
+
+    return () => clearInterval(interval);
+  }, [settings.reminderConfig]);
 
   // Sync dark mode class with HTML element
   useEffect(() => {

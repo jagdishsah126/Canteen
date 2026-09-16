@@ -19,11 +19,15 @@ import {
   BookOpen,
   Heart,
   ExternalLink,
+  User,
+  Bell,
+  TrendingUp,
 } from 'lucide-react';
 import { useCanteenStore } from '../store/canteenStore';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { BackupPayload, BreakfastPreset, CustomOptionType } from '../types/canteen';
 import { getTodayISODate } from '../utils/nepaliDate';
+import { requestNotificationPermission, testMealNotification } from '../utils/notifications';
 
 interface SettingsPageProps {
   isDarkMode: boolean;
@@ -49,6 +53,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     toggleCoreItem,
     resetToHostelDefaults,
     setAutoSaveDailyDefaults,
+    updateUserProfile,
+    setShowDailyNotes,
+    setShowFoodAnalytics,
+    updateReminderConfig,
     addBreakfastPreset,
     updateBreakfastPreset,
     deleteBreakfastPreset,
@@ -59,6 +67,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     importBackup,
     clearAllData,
   } = useCanteenStore();
+
+  // Student Profile state
+  const [profileName, setProfileName] = useState(settings.userProfile?.name || '');
+  const [profileRoom, setProfileRoom] = useState(settings.userProfile?.roomNumber || '');
+  const [profileBlock, setProfileBlock] = useState(settings.userProfile?.hostelBlock || 'WRC Hostel');
+  const [profileBadgeOnHome, setProfileBadgeOnHome] = useState(settings.userProfile?.showBadgeOnHome !== false);
+  const [profileSaveMessage, setProfileSaveMessage] = useState(false);
+
+  // Reminders state
+  const [morningReminderTime, setMorningReminderTime] = useState(settings.reminderConfig?.morningTime || '09:30');
+  const [eveningReminderTime, setEveningReminderTime] = useState(settings.reminderConfig?.eveningTime || '21:30');
+  const [reminderTestStatus, setReminderTestStatus] = useState<string | null>(null);
 
   // Local state for default prices form
   const [morningPrice, setMorningPrice] = useState(String(settings.prices.morningFood));
@@ -93,6 +113,54 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [backupSuccessMessage, setBackupSuccessMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateUserProfile({
+      name: profileName.trim(),
+      roomNumber: profileRoom.trim(),
+      hostelBlock: profileBlock.trim(),
+      showBadgeOnHome: profileBadgeOnHome,
+    });
+    setProfileSaveMessage(true);
+    setTimeout(() => setProfileSaveMessage(false), 3000);
+  };
+
+  const handleToggleReminders = async () => {
+    const nextEnabled = !settings.reminderConfig?.enabled;
+    if (nextEnabled) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        setReminderTestStatus('Permission denied in browser. Enable notifications in browser settings.');
+        setTimeout(() => setReminderTestStatus(null), 4000);
+        return;
+      }
+    }
+    updateReminderConfig({
+      enabled: nextEnabled,
+      morningTime: morningReminderTime,
+      eveningTime: eveningReminderTime,
+    });
+  };
+
+  const handleSaveReminderTimes = (morning: string, evening: string) => {
+    setMorningReminderTime(morning);
+    setEveningReminderTime(evening);
+    updateReminderConfig({
+      morningTime: morning,
+      eveningTime: evening,
+    });
+  };
+
+  const handleTestNotification = () => {
+    const sent = testMealNotification();
+    if (sent) {
+      setReminderTestStatus('✓ Test notification sent! Check your notification tray.');
+    } else {
+      setReminderTestStatus('Notification failed. Check browser permissions.');
+    }
+    setTimeout(() => setReminderTestStatus(null), 4000);
+  };
 
   const handleSavePrices = (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,6 +339,90 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <span>{importErrorMessage}</span>
           </div>
         )}
+
+        {/* Section 0: Student Profile */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center space-x-2">
+            <User className="w-4 h-4 text-amber-500" />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Hostel Resident Profile
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Personalize your bill header with your name, room number, and hostel block.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveProfile} className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Your Full Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Jagdish Sah"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Room Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 214"
+                  value={profileRoom}
+                  onChange={(e) => setProfileRoom(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                Hostel Block / Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Block B / Boys Hostel"
+                value={profileBlock}
+                onChange={(e) => setProfileBlock(e.target.value)}
+                className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center space-x-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={profileBadgeOnHome}
+                  onChange={(e) => setProfileBadgeOnHome(e.target.checked)}
+                  className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 cursor-pointer"
+                />
+                <span>Show profile badge on Home</span>
+              </label>
+
+              <div className="flex items-center space-x-2">
+                {profileSaveMessage && (
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    ✓ Profile saved!
+                  </span>
+                )}
+                <button
+                  type="submit"
+                  className="py-1.5 px-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition"
+                >
+                  Save Profile
+                </button>
+              </div>
+            </div>
+          </form>
+        </section>
 
         {/* Section 1: Default Food Prices */}
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
@@ -837,6 +989,157 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </button>
             </div>
           </form>
+        </section>
+
+        {/* Section: Display & Preferences */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="w-4 h-4 text-amber-500" />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Preferences & Display
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Customize which optional features and widgets are active.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            {/* Show Day Notes */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
+                  Show Day Notes on Daily Feed
+                </span>
+                <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">
+                  Add optional reasons or notes for meals (e.g. "Ate at Lamachaur")
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDailyNotes(settings.showDailyNotes === false)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                  settings.showDailyNotes !== false ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+                role="switch"
+                aria-checked={settings.showDailyNotes !== false}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    settings.showDailyNotes !== false ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Show Food Analytics */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
+                  Show Food Analytics & Hostel Badges
+                </span>
+                <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">
+                  Spending progress bar, daily averages, and fun badges in Monthly Bill
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFoodAnalytics(settings.showFoodAnalytics === false)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                  settings.showFoodAnalytics !== false ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+                role="switch"
+                aria-checked={settings.showFoodAnalytics !== false}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    settings.showFoodAnalytics !== false ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Daily Meal Reminders */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Bell className="w-4 h-4 text-amber-500" />
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Daily Meal Reminders
+                </h2>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Offline browser notifications to remind you to log meals on time.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggleReminders}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                settings.reminderConfig?.enabled ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+              role="switch"
+              aria-checked={Boolean(settings.reminderConfig?.enabled)}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  settings.reminderConfig?.enabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {settings.reminderConfig?.enabled && (
+            <div className="space-y-3 pt-1 animate-fade-in border-t border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 dark:text-slate-400 block">
+                    Morning Reminder
+                  </label>
+                  <input
+                    type="time"
+                    value={morningReminderTime}
+                    onChange={(e) => handleSaveReminderTimes(e.target.value, eveningReminderTime)}
+                    className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-600 dark:text-slate-400 block">
+                    Evening Reminder
+                  </label>
+                  <input
+                    type="time"
+                    value={eveningReminderTime}
+                    onChange={(e) => handleSaveReminderTimes(morningReminderTime, e.target.value)}
+                    className="mt-1 w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={handleTestNotification}
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 transition flex items-center space-x-1.5 active:scale-95"
+                >
+                  <Bell className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Test Notification</span>
+                </button>
+
+                {reminderTestStatus && (
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium truncate ml-2">
+                    {reminderTestStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Section 4: Data Backup & Restore */}

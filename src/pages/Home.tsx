@@ -9,6 +9,8 @@ import {
   Check,
   Trash2,
   AlertCircle,
+  User,
+  StickyNote,
 } from 'lucide-react';
 import { useCanteenStore } from '../store/canteenStore';
 import { calculateDailyCost } from '../utils/billing';
@@ -36,6 +38,7 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
     getRecordForDate,
     saveDayRecord,
     unsaveDayRecord,
+    setDayNote,
     toggleMorningFood,
     toggleDinner,
     toggleBreakfast,
@@ -89,6 +92,17 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
   const handleUnsaveDay = () => {
     unsaveDayRecord(currentDate);
     setDraftRecord(createDefaultRecord(currentDate));
+  };
+
+  const handleNoteChange = (noteText: string) => {
+    if (isSaved) {
+      setDayNote(currentDate, noteText);
+    } else {
+      setDraftRecord((prev) => ({
+        ...prev,
+        note: noteText,
+      }));
+    }
   };
 
   // Helper wrappers that either update store directly (if saved or today) or update local draft
@@ -359,6 +373,25 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
         onSaveDay={handleSaveDay}
       />
 
+      {/* Student Profile Badge */}
+      {settings.userProfile?.showBadgeOnHome !== false && (settings.userProfile?.name || settings.userProfile?.roomNumber) && (
+        <div className="max-w-md mx-auto px-4 pt-2.5">
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200">
+            <div className="flex items-center space-x-1.5 font-medium truncate">
+              <User className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="truncate">{settings.userProfile.name || 'Hostel Resident'}</span>
+            </div>
+            {(settings.userProfile.roomNumber || settings.userProfile.hostelBlock) && (
+              <span className="text-[10.5px] px-2 py-0.5 rounded-md bg-amber-500/20 font-semibold text-amber-800 dark:text-amber-300 shrink-0 ml-2">
+                {settings.userProfile.roomNumber ? `Room ${settings.userProfile.roomNumber}` : ''}
+                {settings.userProfile.roomNumber && settings.userProfile.hostelBlock ? ' • ' : ''}
+                {settings.userProfile.hostelBlock}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Draft Unsaved Notice for Past/Future Dates */}
       {!isSaved && (
         <div className="max-w-md mx-auto px-4 pt-3">
@@ -520,6 +553,35 @@ export const HomePage: React.FC<HomePageProps> = ({ currentDate, onDateChange })
                 />
               );
             })}
+          </div>
+        )}
+
+        {/* Optional Day Note */}
+        {settings.showDailyNotes !== false && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs space-y-1.5">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <div className="flex items-center space-x-1.5">
+                <StickyNote className="w-4 h-4 text-amber-500" />
+                <span>Day Note (Optional)</span>
+              </div>
+              {activeRecord.note && (
+                <button
+                  type="button"
+                  onClick={() => handleNoteChange('')}
+                  className="text-[10.5px] text-slate-400 hover:text-rose-500 transition"
+                >
+                  Clear Note
+                </button>
+              )}
+            </div>
+            <input
+              type="text"
+              placeholder="e.g. Ate outside at Lamachaur, sick in room, mess closed..."
+              value={activeRecord.note || ''}
+              onChange={(e) => handleNoteChange(e.target.value)}
+              maxLength={120}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-amber-500"
+            />
           </div>
         )}
 

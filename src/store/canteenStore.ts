@@ -13,10 +13,12 @@ import {
   DailyCustomItemValue,
   CoreItemsEnabledConfig,
   SupportPromptStatus,
+  UserProfile,
+  ReminderConfig,
 } from '../types/canteen';
 import { isTodayISO, getTodayISODate, getDatesBetween } from '../utils/nepaliDate';
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export const INITIAL_PRICES: CanteenPrices = {
   morningFood: 72,
@@ -39,6 +41,19 @@ export const INITIAL_CORE_ENABLED: CoreItemsEnabledConfig = {
   omelette: true,
 };
 
+export const INITIAL_USER_PROFILE: UserProfile = {
+  name: '',
+  roomNumber: '',
+  hostelBlock: 'WRC Hostel',
+  showBadgeOnHome: true,
+};
+
+export const INITIAL_REMINDER_CONFIG: ReminderConfig = {
+  enabled: false,
+  morningTime: '09:30',
+  eveningTime: '21:30',
+};
+
 export const INITIAL_BREAKFAST_PRESETS: BreakfastPreset[] = [
   { id: 'chowmein', label: 'Chowmein', price: 50 },
   { id: 'momo', label: 'Momo', price: 100 },
@@ -52,6 +67,10 @@ export interface CanteenState {
     defaults: CanteenDefaults;
     coreItemsEnabled: CoreItemsEnabledConfig;
     autoSaveDailyDefaults: boolean;
+    userProfile: UserProfile;
+    showDailyNotes: boolean;
+    showFoodAnalytics: boolean;
+    reminderConfig: ReminderConfig;
   };
   breakfastPresets: BreakfastPreset[];
   customOptions: CustomFoodOption[];
@@ -73,6 +92,15 @@ export interface CanteenState {
   saveDayRecord: (record: DailyRecord) => void;
   unsaveDayRecord: (date: string) => void;
   updateRecord: (record: DailyRecord) => void;
+
+  // Day Notes
+  setDayNote: (date: string, note: string) => void;
+
+  // Profile & Display Preferences
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
+  setShowDailyNotes: (show: boolean) => void;
+  setShowFoodAnalytics: (show: boolean) => void;
+  updateReminderConfig: (config: Partial<ReminderConfig>) => void;
 
   // Core meal actions
   toggleMorningFood: (date: string) => void;
@@ -140,6 +168,10 @@ export const useCanteenStore = create<CanteenState>()(
         defaults: { ...INITIAL_DEFAULTS },
         coreItemsEnabled: { ...INITIAL_CORE_ENABLED },
         autoSaveDailyDefaults: false, // Default off as requested
+        userProfile: { ...INITIAL_USER_PROFILE },
+        showDailyNotes: true,
+        showFoodAnalytics: true,
+        reminderConfig: { ...INITIAL_REMINDER_CONFIG },
       },
       breakfastPresets: [...INITIAL_BREAKFAST_PRESETS],
       customOptions: [],
@@ -215,6 +247,7 @@ export const useCanteenStore = create<CanteenState>()(
             unitPrice: isOmeletteEnabled ? state.settings.prices.omelette : 0,
           },
           customItems,
+          note: '',
           isSaved: isToday,
           createdAt: now,
           updatedAt: now,
@@ -265,6 +298,19 @@ export const useCanteenStore = create<CanteenState>()(
       updateRecord: (record: DailyRecord) => {
         if (isTodayISO(record.date) || record.isSaved) {
           get().saveDayRecord(record);
+        }
+      },
+
+      setDayNote: (date: string, note: string) => {
+        const state = get();
+        const existing = state.getRecordForDate(date) || state.createDefaultRecord(date);
+        const updated: DailyRecord = {
+          ...existing,
+          note: note,
+          updatedAt: new Date().toISOString(),
+        };
+        if (isTodayISO(date) || existing.isSaved) {
+          state.saveDayRecord(updated);
         }
       },
 
@@ -465,6 +511,48 @@ export const useCanteenStore = create<CanteenState>()(
             coreItemsEnabled: { ...INITIAL_CORE_ENABLED },
           },
           breakfastPresets: [...INITIAL_BREAKFAST_PRESETS],
+        }));
+      },
+
+      updateUserProfile: (profile) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            userProfile: {
+              ...state.settings.userProfile,
+              ...profile,
+            },
+          },
+        }));
+      },
+
+      setShowDailyNotes: (show) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            showDailyNotes: show,
+          },
+        }));
+      },
+
+      setShowFoodAnalytics: (show) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            showFoodAnalytics: show,
+          },
+        }));
+      },
+
+      updateReminderConfig: (config) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            reminderConfig: {
+              ...state.settings.reminderConfig,
+              ...config,
+            },
+          },
         }));
       },
 
@@ -800,6 +888,10 @@ export const useCanteenStore = create<CanteenState>()(
             defaults: backup.settings.defaults || { ...INITIAL_DEFAULTS },
             coreItemsEnabled: backup.settings.coreItemsEnabled || { ...INITIAL_CORE_ENABLED },
             autoSaveDailyDefaults: Boolean(backup.settings.autoSaveDailyDefaults),
+            userProfile: backup.settings.userProfile || { ...INITIAL_USER_PROFILE },
+            showDailyNotes: backup.settings.showDailyNotes !== false,
+            showFoodAnalytics: backup.settings.showFoodAnalytics !== false,
+            reminderConfig: backup.settings.reminderConfig || { ...INITIAL_REMINDER_CONFIG },
           },
           breakfastPresets: backup.breakfastPresets || [...INITIAL_BREAKFAST_PRESETS],
           customOptions: backup.customOptions || backup.settings.customOptions || [],
@@ -818,8 +910,36 @@ export const useCanteenStore = create<CanteenState>()(
       },
     }),
     {
-      name: 'wrc_hostel_canteen_store_v4',
+      name: 'wrc_hostel_canteen_store_v5',
       version: CURRENT_SCHEMA_VERSION,
     }
   )
 );
+
+// Backward-compatible migration from earlier stores to v5
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const v5 = window.localStorage.getItem('wrc_hostel_canteen_store_v5');
+    if (!v5) {
+      const prev = window.localStorage.getItem('wrc_hostel_canteen_store_v4') ||
+                   window.localStorage.getItem('wrc_hostel_canteen_store_v3');
+      if (prev) {
+        const parsed = JSON.parse(prev);
+        if (parsed?.state) {
+          parsed.state.settings = {
+            ...parsed.state.settings,
+            userProfile: { ...INITIAL_USER_PROFILE, ...parsed.state.settings?.userProfile },
+            showDailyNotes: parsed.state.settings?.showDailyNotes !== false,
+            showFoodAnalytics: parsed.state.settings?.showFoodAnalytics !== false,
+            reminderConfig: { ...INITIAL_REMINDER_CONFIG, ...parsed.state.settings?.reminderConfig },
+          };
+          parsed.state.schemaVersion = CURRENT_SCHEMA_VERSION;
+          parsed.version = CURRENT_SCHEMA_VERSION;
+          window.localStorage.setItem('wrc_hostel_canteen_store_v5', JSON.stringify(parsed));
+        }
+      }
+    }
+  }
+} catch {
+  // Ignore in non-browser environments
+}

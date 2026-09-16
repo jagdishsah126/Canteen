@@ -60,9 +60,23 @@ export interface DailyRecord {
   masu: ExtraItemRecord;
   omelette: ExtraItemRecord;
   customItems?: Record<string, DailyCustomItemValue>;
+  note?: string; // Optional day note (e.g. "Ate outside at Lamachaur")
   isSaved?: boolean; // explicitly saved for past/future days, or auto-saved for today
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UserProfile {
+  name: string;        // e.g. "Jagdish Sah"
+  roomNumber: string;  // e.g. "214"
+  hostelBlock: string; // e.g. "Block B"
+  showBadgeOnHome: boolean;
+}
+
+export interface ReminderConfig {
+  enabled: boolean;
+  morningTime: string; // "09:30"
+  eveningTime: string; // "21:30"
 }
 
 export interface BreakfastPreset {
@@ -114,6 +128,10 @@ export interface BackupPayload {
     defaults: CanteenDefaults;
     coreItemsEnabled?: CoreItemsEnabledConfig;
     autoSaveDailyDefaults?: boolean;
+    userProfile?: UserProfile;
+    showDailyNotes?: boolean;
+    showFoodAnalytics?: boolean;
+    reminderConfig?: ReminderConfig;
     customOptions?: CustomFoodOption[];
   };
   breakfastPresets: BreakfastPreset[];

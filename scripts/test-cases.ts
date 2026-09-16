@@ -127,4 +127,74 @@ store.setAutoSaveDailyDefaults(false);
 const caughtUpDisabled = store.runAutoSaveCatchup();
 assert(caughtUpDisabled === 0, `When autoSave is false, catchup returns 0, got ${caughtUpDisabled}`);
 
-console.log('\n🎉 ALL WRC HOSTEL TEST CASES (AUTO-SAVE, REMOVABLE MEALS, 30-DAY MILESTONE) PASSED!\n');
+// Case 9: Day Notes (Diary) Feature
+const savedDay = makeRecord({ date: '2026-09-12', isSaved: true });
+store.saveDayRecord(savedDay);
+store.setDayNote('2026-09-12', 'Ate outside at Lamachaur with friends');
+const dayNoteRecord = store.getRecordForDate('2026-09-12');
+assert(dayNoteRecord !== null && dayNoteRecord.note === 'Ate outside at Lamachaur with friends', 'Day note saved correctly');
+
+// Case 10: Student Profile & Room Number
+store.updateUserProfile({
+  name: 'Jagdish Sah',
+  roomNumber: '214',
+  hostelBlock: 'Block B',
+  showBadgeOnHome: true,
+});
+const currentProfile = useCanteenStore.getState().settings.userProfile;
+assert(currentProfile.name === 'Jagdish Sah', 'Profile name updated');
+assert(currentProfile.roomNumber === '214', 'Profile room number updated');
+assert(currentProfile.hostelBlock === 'Block B', 'Profile hostel block updated');
+assert(currentProfile.showBadgeOnHome === true, 'Profile badge visibility preserved');
+
+// Case 11: Preferences & Meal Reminders Config
+store.setShowDailyNotes(false);
+assert(useCanteenStore.getState().settings.showDailyNotes === false, 'showDailyNotes toggled off');
+store.setShowDailyNotes(true);
+assert(useCanteenStore.getState().settings.showDailyNotes === true, 'showDailyNotes toggled on');
+
+store.setShowFoodAnalytics(false);
+assert(useCanteenStore.getState().settings.showFoodAnalytics === false, 'showFoodAnalytics toggled off');
+store.setShowFoodAnalytics(true);
+assert(useCanteenStore.getState().settings.showFoodAnalytics === true, 'showFoodAnalytics toggled on');
+
+store.updateReminderConfig({
+  enabled: true,
+  morningTime: '08:45',
+  eveningTime: '21:15',
+});
+const currentReminder = useCanteenStore.getState().settings.reminderConfig;
+assert(currentReminder.enabled === true, 'Reminder enabled');
+assert(currentReminder.morningTime === '08:45', 'Reminder morning time updated');
+assert(currentReminder.eveningTime === '21:15', 'Reminder evening time updated');
+
+// Case 12: Food Analytics & Hostel Badges Engine
+import { calculateMonthlyAnalytics } from '../src/utils/analytics';
+
+const testRecordsForAnalytics: DailyRecord[] = [
+  makeRecord({ date: '2026-09-01', masu: { quantity: 2, unitPrice: 75 } }),
+  makeRecord({ date: '2026-09-02', masu: { quantity: 2, unitPrice: 75 } }),
+  makeRecord({ date: '2026-09-03', omelette: { quantity: 4, unitPrice: 30 } }),
+  makeRecord({ date: '2026-09-04', morningFood: { eaten: false, price: 72 }, dinner: { eaten: false, price: 72 } }),
+  makeRecord({ date: '2026-09-05', morningFood: { eaten: false, price: 72 }, dinner: { eaten: false, price: 72 } }),
+];
+
+const analytics = calculateMonthlyAnalytics(testRecordsForAnalytics);
+assert(analytics.activeDaysCount === 5, `Analytics active days count is 5, got ${analytics.activeDaysCount}`);
+assert(analytics.totalCost > 0, 'Analytics total cost calculated');
+assert(analytics.averageDailyCost > 0, 'Analytics average daily cost calculated');
+assert(analytics.counts.masuTotal === 4, `Analytics masu count is 4, got ${analytics.counts.masuTotal}`);
+assert(analytics.counts.omeletteTotal === 4, `Analytics omelette count is 4, got ${analytics.counts.omeletteTotal}`);
+assert(analytics.counts.skippedMeals === 4, `Analytics skipped meals count is 4, got ${analytics.counts.skippedMeals}`);
+
+const masuBadge = analytics.badges.find(b => b.id === 'masu_lover');
+assert(masuBadge !== undefined && masuBadge.isUnlocked === true, 'Masu Lover badge unlocked when masu >= 4');
+
+const eggBadge = analytics.badges.find(b => b.id === 'egg_enthusiast');
+assert(eggBadge !== undefined && eggBadge.isUnlocked === true, 'Omelette Fan badge unlocked when omelettes >= 4');
+
+const budgetSaverBadge = analytics.badges.find(b => b.id === 'mess_saver');
+assert(budgetSaverBadge !== undefined && budgetSaverBadge.isUnlocked === true, 'Budget Saver badge unlocked when skipped >= 4');
+
+console.log('\n🎉 ALL WRC HOSTEL TEST CASES (PROFILE, NOTES, ANALYTICS, BADGES, REMINDERS) PASSED!\n');
+

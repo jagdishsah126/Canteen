@@ -9,9 +9,15 @@ import {
   ChevronUp,
   ExternalLink,
   Lock,
+  User,
+  StickyNote,
+  Award,
+  TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { useCanteenStore } from '../store/canteenStore';
 import { aggregateMonthlySummary, MonthlyAggregatedSummary } from '../utils/billing';
+import { calculateMonthlyAnalytics } from '../utils/analytics';
 import {
   isoToBS,
   NEPALI_MONTH_NAMES_EN,
@@ -24,7 +30,7 @@ interface MonthlySummaryProps {
 }
 
 export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDateToEdit }) => {
-  const { records, monthSnapshots, saveMonthSnapshot } = useCanteenStore();
+  const { records, settings, monthSnapshots, saveMonthSnapshot } = useCanteenStore();
 
   // Current selected BS Month/Year view
   const todayBS = useMemo(() => isoToBS(new Date().toISOString().split('T')[0]), []);
@@ -57,19 +63,24 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
   };
 
   // Find all records belonging to this BS month that are saved (or today)
-  const monthlyData: MonthlyAggregatedSummary = useMemo(() => {
+  const matchedRecords = useMemo(() => {
     const validMonthDates = new Set(getISODatesForBSMonth(selectedYear, selectedMonthIndex));
     
-    const matchedRecords = Object.values(records).filter((rec) => {
-      // Must be marked as saved
+    return Object.values(records).filter((rec) => {
       if (rec.isSaved === false) return false;
       if (validMonthDates.has(rec.date)) return true;
       const bs = isoToBS(rec.date);
       return bs.year === selectedYear && bs.monthIndex === selectedMonthIndex;
     });
-
-    return aggregateMonthlySummary(matchedRecords);
   }, [records, selectedYear, selectedMonthIndex]);
+
+  const monthlyData: MonthlyAggregatedSummary = useMemo(() => {
+    return aggregateMonthlySummary(matchedRecords);
+  }, [matchedRecords]);
+
+  const analytics = useMemo(() => {
+    return calculateMonthlyAnalytics(matchedRecords);
+  }, [matchedRecords]);
 
   // Is current calculated bill different from closed snapshot?
   const isSnapshotDiscrepancy =
@@ -138,6 +149,23 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
       </div>
 
       <main className="max-w-md mx-auto px-4 py-4 space-y-4">
+        {/* Student Profile Header */}
+        {(settings.userProfile?.name || settings.userProfile?.roomNumber) && (
+          <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs shadow-xs">
+            <div className="flex items-center space-x-2 font-semibold text-slate-800 dark:text-slate-200 truncate">
+              <User className="w-4 h-4 text-amber-500 shrink-0" />
+              <span className="truncate">{settings.userProfile.name || 'Hostel Resident'}</span>
+            </div>
+            {(settings.userProfile.roomNumber || settings.userProfile.hostelBlock) && (
+              <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0 ml-2">
+                {settings.userProfile.roomNumber ? `Room ${settings.userProfile.roomNumber}` : ''}
+                {settings.userProfile.roomNumber && settings.userProfile.hostelBlock ? ' • ' : ''}
+                {settings.userProfile.hostelBlock}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Incomplete Records Warning Banner */}
         {monthlyData.incompleteRecordsCount > 0 && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 flex items-start space-x-3 text-amber-800 dark:text-amber-200">
@@ -294,6 +322,144 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
           </div>
         </div>
 
+        {/* Monthly Food Analytics & Hostel Badges */}
+        {settings.showFoodAnalytics !== false && monthlyData.totalRecordsCount > 0 && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="w-4 h-4 text-amber-500" />
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Monthly Food Insights
+                </h2>
+              </div>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold">
+                {analytics.activeDaysCount} Days Tracked
+              </span>
+            </div>
+
+            {/* Visual Proportional Spend Bar */}
+            {analytics.totalCost > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Spending Distribution</span>
+                  <span className="text-[11px] text-slate-400 font-normal">Rs. {analytics.totalCost} total</span>
+                </div>
+                
+                <div className="h-3.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 flex overflow-hidden p-0.5 space-x-0.5">
+                  {analytics.morningPercent > 0 && (
+                    <div
+                      style={{ width: `${analytics.morningPercent}%` }}
+                      className="h-full bg-amber-500 rounded-xs transition-all duration-500"
+                      title={`Morning: ${analytics.morningPercent}% (Rs. ${analytics.morningCost})`}
+                    />
+                  )}
+                  {analytics.dinnerPercent > 0 && (
+                    <div
+                      style={{ width: `${analytics.dinnerPercent}%` }}
+                      className="h-full bg-indigo-500 rounded-xs transition-all duration-500"
+                      title={`Dinner: ${analytics.dinnerPercent}% (Rs. ${analytics.dinnerCost})`}
+                    />
+                  )}
+                  {analytics.breakfastPercent > 0 && (
+                    <div
+                      style={{ width: `${analytics.breakfastPercent}%` }}
+                      className="h-full bg-emerald-500 rounded-xs transition-all duration-500"
+                      title={`Breakfast: ${analytics.breakfastPercent}% (Rs. ${analytics.breakfastCost})`}
+                    />
+                  )}
+                  {analytics.extrasPercent > 0 && (
+                    <div
+                      style={{ width: `${analytics.extrasPercent}%` }}
+                      className="h-full bg-rose-500 rounded-xs transition-all duration-500"
+                      title={`Addons: ${analytics.extrasPercent}% (Rs. ${analytics.extrasCost})`}
+                    />
+                  )}
+                </div>
+
+                {/* Legend */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-400">Lunch: {analytics.morningPercent}%</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-400">Dinner: {analytics.dinnerPercent}%</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-400">Breakfast: {analytics.breakfastPercent}%</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-400">Extras: {analytics.extrasPercent}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Metrics Grid */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10.5px] text-slate-400 dark:text-slate-500 uppercase font-semibold tracking-wider block">
+                  Daily Average
+                </span>
+                <span className="text-base font-extrabold text-slate-800 dark:text-slate-100 mt-0.5 block">
+                  Rs. {analytics.averageDailyCost} <span className="text-xs font-normal text-slate-400">/ day</span>
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10.5px] text-slate-400 dark:text-slate-500 uppercase font-semibold tracking-wider block">
+                  Skipped Meals
+                </span>
+                <span className="text-base font-extrabold text-slate-800 dark:text-slate-100 mt-0.5 block">
+                  {analytics.counts.skippedMeals} <span className="text-xs font-normal text-slate-400">meals saved</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Hostel Achievement Badges */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-800 dark:text-slate-200">
+                <div className="flex items-center space-x-1.5">
+                  <Award className="w-4 h-4 text-amber-500" />
+                  <span>Hostel Achievements</span>
+                </div>
+                <span className="text-[10.5px] text-slate-400 font-normal">
+                  {analytics.badges.filter(b => b.isUnlocked).length} / {analytics.badges.length} unlocked
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {analytics.badges.map((badge) => (
+                  <div
+                    key={badge.id}
+                    className={`p-2.5 rounded-xl border flex items-start space-x-2.5 transition ${
+                      badge.isUnlocked
+                        ? 'bg-amber-500/10 border-amber-500/25 text-slate-900 dark:text-slate-100'
+                        : 'bg-slate-50/50 dark:bg-slate-800/20 border-slate-100 dark:border-slate-800/60 opacity-40 grayscale'
+                    }`}
+                  >
+                    <span className="text-xl shrink-0">{badge.icon}</span>
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs flex items-center space-x-1">
+                        <span>{badge.title}</span>
+                        {badge.isUnlocked && (
+                          <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        {badge.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Daily Breakdown List (Audit Trail) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
@@ -327,6 +493,11 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
                           {bs.monthName} {bs.date}
                         </span>
                         <span className="text-[11px] text-slate-400">({bs.dayName.slice(0, 3)})</span>
+                        {record.note && (
+                          <span title={`Note: ${record.note}`} className="text-amber-500 flex items-center">
+                            <StickyNote className="w-3 h-3" />
+                          </span>
+                        )}
                         {breakdown.isIncomplete && (
                           <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-sm font-medium">
                             ⚠ Incomplete
@@ -366,8 +537,8 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
                             <span className="font-semibold">
                               {record.breakfast.eaten
                                 ? record.breakfast.item
-                                  ? `${record.breakfast.item} (Rs. ${record.breakfast.price})`
-                                  : '⚠ Item not selected'
+                                   ? `${record.breakfast.item} (Rs. ${record.breakfast.price})`
+                                   : '⚠ Item not selected'
                                 : 'No'}
                             </span>
                           </div>
@@ -396,6 +567,14 @@ export const MonthlySummaryPage: React.FC<MonthlySummaryProps> = ({ onSelectDate
                             </div>
                           ))}
                         </div>
+
+                        {/* Day Note if present */}
+                        {record.note && (
+                          <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 text-xs flex items-center space-x-2">
+                            <StickyNote className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span className="italic font-medium">"{record.note}"</span>
+                          </div>
+                        )}
 
                         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
                           <button
