@@ -114,8 +114,10 @@ export interface CanteenState {
   decrementOmelette: (date: string) => void;
   setOmeletteQuantity: (date: string, quantity: number) => void;
 
-  // Core Items Configuration (Removable Options)
+  // Core Items Configuration (Removable / Deletable Options)
   toggleCoreItem: (itemKey: keyof CoreItemsEnabledConfig) => void;
+  deleteCoreItem: (itemKey: keyof CoreItemsEnabledConfig) => void;
+  restoreCoreItem: (itemKey: keyof CoreItemsEnabledConfig) => void;
   resetToHostelDefaults: () => void;
 
   // Auto-Save Management
@@ -489,7 +491,7 @@ export const useCanteenStore = create<CanteenState>()(
         }
       },
 
-      // Core Items Configuration (Removable Options)
+      // Core Items Configuration (Removable / Deletable Options)
       toggleCoreItem: (itemKey) => {
         set((state) => ({
           settings: {
@@ -497,6 +499,30 @@ export const useCanteenStore = create<CanteenState>()(
             coreItemsEnabled: {
               ...state.settings.coreItemsEnabled,
               [itemKey]: !state.settings.coreItemsEnabled[itemKey],
+            },
+          },
+        }));
+      },
+
+      deleteCoreItem: (itemKey) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            coreItemsEnabled: {
+              ...state.settings.coreItemsEnabled,
+              [itemKey]: false,
+            },
+          },
+        }));
+      },
+
+      restoreCoreItem: (itemKey) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            coreItemsEnabled: {
+              ...state.settings.coreItemsEnabled,
+              [itemKey]: true,
             },
           },
         }));

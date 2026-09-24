@@ -141,9 +141,10 @@ classDiagram
 
 Hostel students have varied dietary habits. The app provides two layers of modularity:
 
-1. **Removable Core Meals (`coreItemsEnabled`)**:
-   - Any core meal (*Morning Food, Breakfast, Dinner, Masu, Omelette*) can be toggled OFF in Settings.
-   - When toggled off, it disappears from the Daily Feed and default records to keep the interface minimal.
+1. **Deletable & Restorable Core Meals (`coreItemsEnabled`)**:
+   - Any core meal (*Morning Food, Breakfast, Dinner, Masu, Omelette*) can be deleted in Settings. First-time users have all 5 meals active by default.
+   - When deleted, it is removed from the active meals list and prices form, with a 1-tap "+ Restore" button to reinstate it anytime.
+   - When removed, it disappears from the Daily Feed and default records to keep the interface clean and minimal.
 2. **Infinite Custom Items (`customOptions`)**:
    - **Toggle (`toggle`)**: Single switch (e.g. *Hostel Milk: Rs. 35*).
    - **Quantity Stepper (`quantity`)**: Non-negative counter (e.g. *Boiled Eggs: Rs. 20/piece*).

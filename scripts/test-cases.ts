@@ -122,6 +122,11 @@ assert(useCanteenStore.getState().settings.coreItemsEnabled.morningFood === fals
 store.resetToHostelDefaults();
 assert(useCanteenStore.getState().settings.coreItemsEnabled.morningFood === true, 'Morning food should be restored after resetToHostelDefaults');
 
+store.deleteCoreItem('dinner');
+assert(useCanteenStore.getState().settings.coreItemsEnabled.dinner === false, 'Dinner should be deleted by deleteCoreItem');
+store.restoreCoreItem('dinner');
+assert(useCanteenStore.getState().settings.coreItemsEnabled.dinner === true, 'Dinner should be restored by restoreCoreItem');
+
 // Case 8: Auto-Save Catchup Engine
 store.setAutoSaveDailyDefaults(false);
 const caughtUpDisabled = store.runAutoSaveCatchup();

@@ -92,9 +92,10 @@ Navigate to the **Settings tab (⚙️)**:
 - **Canteen Prices**: Verify current WRC rates (Default: *Morning Food Rs. 72*, *Dinner Rs. 72*, *Masu Rs. 75*, *Omelette Rs. 30*). Adjust if mess rates change.
 - **Customize Presets**: Add your favorite morning breakfast items (e.g. *Chowmein Rs. 50*, *Momo Rs. 100*, *Milk Tea Rs. 20*).
 
-### 3️⃣ Customize & Toggle Removable Meals
+### 3️⃣ Customize, Delete & Restore Core Meals
 Don't eat morning food or prefer tracking only dinner and snacks?
-- Under **Settings ➔ Core Hostel Food Items**, toggle OFF any meal (Morning Food, Breakfast, Dinner, Masu, Omelette).
+- Under **Settings ➔ Core Hostel Meals**, tap **Delete** on any meal you don't consume (Morning Food, Breakfast, Dinner, Masu, Omelette). First-time users have all 5 meals active by default.
+- Any deleted meal can be restored at any time with a single tap of **+ Restore**, or tap **Reset Defaults**!
 - Add custom options like *Afternoon Milk*, *Roti*, or *Fruit Bowl* with toggle, numeric stepper, or multi-choice preset types!
 
 ### 4️⃣ Master Auto-Save vs. Vacation Mode
@@ -127,7 +128,7 @@ Don't eat morning food or prefer tracking only dinner and snacks?
 | 🥐 **Breakfast** | **Multi-Choice & Presets** | Instant presets (*Chowmein, Momo, Tea*) plus arbitrary custom food names and prices. Incomplete meal warnings if price is omitted. |
 | 🍗 **Extra Items** | **Masu & Omelette Steppers** | Non-negative integer counters with large touch-friendly buttons for tracking non-veg portions. |
 | 🛠️ **Custom Items** | **Infinite Custom Addons** | Create unlimited custom options: **Toggle** (*e.g. Milk*), **Quantity** (*e.g. Eggs*), or **Multi-Choice** (*e.g. Snacks*). |
-| ⚙️ **Modularity** | **Removable Core Meals** | Any default core meal can be disabled if a resident follows a unique diet. |
+| 🗑️ **Modularity** | **Deletable & Restorable Core Meals** | Delete standard meals from your daily feed and prices with 1 tap, with instant restore whenever needed. Defaults active for new users. |
 | ⚡ **Automation** | **Auto-Save Catchup** | Background catchup engine fills untracked days with defaults automatically upon opening. |
 | 🏖️ **Vacation** | **Vacation / Leave Mode** | Turning Auto-Save OFF freezes automatic logging during semester breaks or hostel leaves. |
 | 📝 **Diary** | **Day Notes / Annotations** | 120-character day note field per record (*"Mess closed for holiday"*, *"Sick in room"*). |
